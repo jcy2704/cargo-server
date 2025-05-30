@@ -1,0 +1,28 @@
+services:
+  cargo-api:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    working_dir: /app
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=mysql://root:mysecretpassword@localhost:3306/cargo
+
+  db:
+    image: mariadb:10.11
+    container_name: cargo-server-db
+    environment:
+      MYSQL_ROOT_PASSWORD: mysecretpassword
+      MYSQL_DATABASE: cargo
+      MYSQL_USER: root
+      MYSQL_PASSWORD: mysecretpassword
+    volumes:
+      - db-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+volumes:
+  db-data:
