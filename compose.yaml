@@ -11,6 +11,7 @@ services:
     environment:
       - DATABASE_URL=mysql://root:mysecretpassword@db:3306/cargo
       - CRYPTO_KEY=980e0e27cc9525cc3fbf9c0c21883fe0de5edfeee958398ca56b6c54b5cd5e5b
+      - RESEND_API_KEY=${RESEND_API_KEY}
 
   db:
     image: mariadb:10.11

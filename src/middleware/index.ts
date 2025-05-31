@@ -13,7 +13,11 @@ export const withTenantDrizzle: MiddlewareHandler = async (c, next) => {
 
   const apiKey = authHeader.replace("Bearer ", "").trim();
   const client = (
-    await sharedDb.select().from(clients).where(eq(clients.apiKey, apiKey))
+    await sharedDb
+      .select()
+      .from(clients)
+      .where(eq(clients.apiKey, apiKey))
+      .limit(1)
   )[0];
 
   if (!client || !client.dbUrl) {
@@ -23,7 +27,6 @@ export const withTenantDrizzle: MiddlewareHandler = async (c, next) => {
   const tenantDb = getDrizzleForTenant(client.dbUrl);
 
   c.set("tenantDb", tenantDb);
-  c.set("client", client);
 
   await next();
 };

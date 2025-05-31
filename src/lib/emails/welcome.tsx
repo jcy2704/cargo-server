@@ -14,7 +14,7 @@ import {
 } from "@react-email/components";
 import * as React from "react";
 
-interface WelcomeEmailProps {
+export interface WelcomeEmailProps {
   nombre: string;
   apellido: string;
   casillero: string;
@@ -25,7 +25,7 @@ interface WelcomeEmailProps {
   instagramUrl?: string;
 }
 
-export const WelcomeEmail = ({
+export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
   nombre,
   apellido,
   casillero,
@@ -137,25 +137,36 @@ export const WelcomeEmail = ({
 
           <Hr style={styles.hr} />
 
-          <Heading style={styles.subheading}>
-            Información del Casillero (Aéreo)
-          </Heading>
-          <Text style={styles.paragraph}>
-            Nombre: {codigo_de_compania} {nombre} {apellido}
-            <br />
-            Dirección: {direccion.direccion1} {codigo_de_compania}
-            <br />
-            Línea 2: {codigo_de_compania}
-            {casillero}
-            <br />
-            Ciudad: {direccion.ciudad}, Estado: {direccion.estado}
-            <br />
-            Código Postal: {direccion.zip}
-            <br />
-            País: {direccion.pais}
-            <br />
-            Tel: {direccion.tel}
-          </Text>
+          <Section
+            style={{
+              backgroundColor: "#f3f4f6",
+              padding: "24px",
+              borderRadius: "8px",
+              marginBottom: "24px",
+            }}
+          >
+            <Heading style={{ ...styles.subheading, marginTop: 0 }}>
+              Información del Casillero (Aéreo)
+            </Heading>
+            <Text style={{ ...styles.paragraph, marginBottom: 0 }}>
+              Nombre: {codigo_de_compania} {nombre} {apellido}
+              <br />
+              Dirección: {direccion.direccion1} {codigo_de_compania}
+              <br />
+              Línea 2: {codigo_de_compania}
+              {casillero}
+              <br />
+              Ciudad: {direccion.ciudad}
+              <br />
+              Estado: {direccion.estado}
+              <br />
+              Código Postal: {direccion.zip}
+              <br />
+              País: {direccion.pais}
+              <br />
+              Tel: {direccion.tel}
+            </Text>
+          </Section>
 
           <Text style={styles.paragraph}>
             Usa esta información cada vez que realices una compra por internet.
@@ -249,15 +260,15 @@ export const WelcomeEmail = ({
   );
 };
 
-WelcomeEmail.PreviewProps = {
-  nombre: "Juan",
-  apellido: "Pérez",
-  casillero: "12345",
-  sucursal: "Sucursal Central",
-  codigo_de_compania: "ABC123",
-  nombre_de_compania: "TuEmpresa",
-  logo: "https://via.placeholder.com/160x40?text=Logo",
-  instagramUrl: "https://instagram.com/tuempresa",
-} satisfies WelcomeEmailProps;
+// WelcomeEmail.PreviewProps = {
+//   nombre: "Juan",
+//   apellido: "Pérez",
+//   casillero: "12345",
+//   sucursal: "Sucursal Central",
+//   codigo_de_compania: "ABC123",
+//   nombre_de_compania: "TuEmpresa",
+//   logo: "https://via.placeholder.com/160x40?text=Logo",
+//   instagramUrl: "https://instagram.com/tuempresa",
+// } satisfies WelcomeEmailProps;
 
 export default WelcomeEmail;
