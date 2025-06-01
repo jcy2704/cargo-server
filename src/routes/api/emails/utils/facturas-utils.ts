@@ -1,5 +1,15 @@
 import type { MySql2Database } from "drizzle-orm/mysql2";
-import * as tenantSchema from "@/db/tenants/tenants-schema";
+import {
+  facturas as tenantFacturas,
+  usuarios,
+  sucursales,
+  trackings,
+} from "@/db/tenants/tenants-schema";
+import type {
+  FacturaWithRelations,
+  UsuariosWithSucursal,
+  Sucursales,
+} from "@/db/tenants/tenants-schema";
 import { eq, inArray } from "drizzle-orm";
 import type { Context } from "hono";
 
@@ -11,45 +21,36 @@ export const getFacturas = async (
   const dbFacturas = await tenantDb
     .select({
       factura: {
-        facturaId: tenantSchema.facturas.facturaId,
-        fecha: tenantSchema.facturas.fecha,
-        total: tenantSchema.facturas.total,
-        casillero: tenantSchema.facturas.casillero,
+        facturaId: tenantFacturas.facturaId,
+        fecha: tenantFacturas.fecha,
+        total: tenantFacturas.total,
+        casillero: tenantFacturas.casillero,
       },
       cliente: {
-        nombre: tenantSchema.usuarios.nombre,
-        apellido: tenantSchema.usuarios.apellido,
-        correo: tenantSchema.usuarios.correo,
-        casillero: tenantSchema.usuarios.casillero,
+        nombre: usuarios.nombre,
+        apellido: usuarios.apellido,
+        correo: usuarios.correo,
+        casillero: usuarios.casillero,
       },
       sucursal: {
-        telefono: tenantSchema.sucursales.telefono,
-        direccion: tenantSchema.sucursales.direccion,
-        maps: tenantSchema.sucursales.maps,
-        sucursal: tenantSchema.sucursales.sucursal,
-        correo: tenantSchema.sucursales.correo,
+        telefono: sucursales.telefono,
+        direccion: sucursales.direccion,
+        maps: sucursales.maps,
+        sucursal: sucursales.sucursal,
+        correo: sucursales.correo,
       },
       trackings: {
-        trackingId: tenantSchema.trackings.trackingId,
-        numeroTracking: tenantSchema.trackings.numeroTracking,
-        precio: tenantSchema.trackings.precio,
-        peso: tenantSchema.trackings.peso,
+        trackingId: trackings.trackingId,
+        numeroTracking: trackings.numeroTracking,
+        precio: trackings.precio,
+        peso: trackings.peso,
       },
     })
-    .from(tenantSchema.facturas)
-    .where(inArray(tenantSchema.facturas.facturaId, facturaIds))
-    .leftJoin(
-      tenantSchema.usuarios,
-      eq(tenantSchema.facturas.clienteId, tenantSchema.usuarios.id)
-    )
-    .leftJoin(
-      tenantSchema.sucursales,
-      eq(tenantSchema.usuarios.sucursalId, tenantSchema.sucursales.sucursalId)
-    )
-    .leftJoin(
-      tenantSchema.trackings,
-      eq(tenantSchema.facturas.facturaId, tenantSchema.trackings.facturaId)
-    );
+    .from(tenantFacturas)
+    .where(inArray(tenantFacturas.facturaId, facturaIds))
+    .leftJoin(usuarios, eq(tenantFacturas.clienteId, usuarios.id))
+    .leftJoin(sucursales, eq(usuarios.sucursalId, sucursales.sucursalId))
+    .leftJoin(trackings, eq(tenantFacturas.facturaId, trackings.facturaId));
 
   if (!dbFacturas.length) {
     return c.json({ error: "Facturas not found" }, 400);
@@ -60,7 +61,7 @@ export const getFacturas = async (
   const facturasMap = new Map<
     number,
     {
-      cliente: tenantSchema.UsuariosWithSucursal;
+      cliente: UsuariosWithSucursal;
       trackings: TrackingRow[];
     }
   >();
@@ -74,7 +75,7 @@ export const getFacturas = async (
         cliente: {
           ...row.cliente,
           sucursal: row.sucursal,
-        } as tenantSchema.UsuariosWithSucursal,
+        } as UsuariosWithSucursal,
         trackings: [],
       });
     }
@@ -87,11 +88,8 @@ export const getFacturas = async (
   // Final grouped result
   const facturas = Array.from(facturasMap.values());
 
-  return facturas;
+  return facturas as FacturaWithRelations[];
 };
-
-type FacturaWithRelations = tenantSchema.FacturasWithTrackings &
-  tenantSchema.FacturasWithCliente;
 
 type PdfWithMeta = {
   facturaId: number;
@@ -111,7 +109,7 @@ export function groupPdfsByClient(
       total: number;
       trackings: FacturaWithRelations["trackings"];
       casillero: number;
-      sucursal: tenantSchema.Sucursales;
+      sucursal: Sucursales;
     }
   >();
 

@@ -10,6 +10,7 @@ import type {
   Sucursales,
   UsuariosWithSucursal,
   FacturasWithCliente,
+  FacturaWithRelations,
 } from "@/db/tenants/tenants-schema";
 applyPlugin(jsPDF);
 
@@ -216,12 +217,10 @@ export async function generateInvoice({
   info,
   company,
   logo,
-  descargar = false,
 }: {
-  info: FacturasWithTrackings & FacturasWithCliente;
+  info: FacturaWithRelations;
   company: string;
   logo: string;
-  descargar?: boolean;
 }): Promise<Buffer> {
   const doc = new jsPDF(PDF_CONFIG);
   const trackingRows = createTrackingRows(info.trackings);

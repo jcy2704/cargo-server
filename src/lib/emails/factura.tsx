@@ -28,28 +28,15 @@ export interface InvoiceEmailProps {
 }
 
 export const InvoiceEmail: React.FC<Readonly<InvoiceEmailProps>> = ({
-  nombre = "kev",
-  trackings = [
-    {
-      trackingId: 1,
-      numeroTracking: "123",
-      precio: 12,
-      peso: 12,
-    },
-  ] as tenantSchema.Trackings[],
-  casillero = 123,
-  logo = "https://via.placeholder.com/200",
-  company = "Heavy Cargo Service",
-  sucursal = {
-    direccion: "123 Main St",
-    maps: "https://google.com",
-    telefono: "123-456-7890",
-    sucursal: "Dos Mares",
-    correo: "kev@kev.com",
-  } as tenantSchema.Sucursales,
-  total = 12,
+  nombre,
+  trackings,
+  casillero,
+  logo,
+  company,
+  sucursal,
+  total,
 }: InvoiceEmailProps) => {
-  const previewText = `¡Tu orden está lista para retirar! Casillero ${casillero}`;
+  const previewText = `Información de tu orden y como retirarla. Casillero ${casillero}`;
 
   return (
     <Html>
@@ -95,7 +82,8 @@ export const InvoiceEmail: React.FC<Readonly<InvoiceEmailProps>> = ({
             {/* Package Information */}
             <Section style={packageSection}>
               <Heading style={sectionTitle}>
-                📦 Información de tus Paquetes
+                📦 Información de{" "}
+                {trackings.length > 1 ? "tus paquetes" : "tu paquete"}
               </Heading>
 
               {/* Casillero Highlight */}
@@ -188,9 +176,7 @@ export const InvoiceEmail: React.FC<Readonly<InvoiceEmailProps>> = ({
 
             {/* Thank You */}
             <Section style={thankYou}>
-              <Text style={thankYouText}>
-                ¡Gracias por preferir Heavy Cargo Service!
-              </Text>
+              <Text style={thankYouText}>¡Gracias por preferir {company}!</Text>
             </Section>
           </Section>
 
@@ -200,19 +186,14 @@ export const InvoiceEmail: React.FC<Readonly<InvoiceEmailProps>> = ({
           <Section style={footer}>
             <Text style={footerText}>¿Necesitas ayuda? Contáctanos</Text>
             <Row>
-              <Column align="right" style={{ width: "45%" }}>
-                <Link href={`mailto:${sucursal.correo}`} style={footerLink}>
-                  {sucursal.correo}
-                </Link>
-              </Column>
-              <Column style={{ width: "10%" }}>
-                <Text style={footerSeparator}>|</Text>
-              </Column>
-              <Column align="left" style={{ width: "45%" }}>
-                <Link href={`tel:${sucursal.telefono}`} style={footerLink}>
-                  {sucursal.telefono}
-                </Link>
-              </Column>
+              <Link href={`mailto:${sucursal.correo}`} style={footerLink}>
+                {sucursal.correo}
+              </Link>
+            </Row>
+            <Row>
+              <Link href={`tel:${sucursal.telefono}`} style={footerLink}>
+                {sucursal.telefono}
+              </Link>
             </Row>
             <Text style={copyright}>
               © 2025 Todos los derechos reservados.
@@ -224,6 +205,30 @@ export const InvoiceEmail: React.FC<Readonly<InvoiceEmailProps>> = ({
   );
 };
 
+// InvoiceEmail.PreviewProps = {
+//   nombre: "Juan",
+//   trackings: [
+//     {
+//       trackingId: 1,
+//       numeroTracking: "123",
+//       precio: 12,
+//       peso: 12,
+//     },
+//   ] as tenantSchema.Trackings[],
+//   casillero: 12345,
+//   logo: "",
+//   company: "PanaBox Logistics",
+//   sucursal: {
+//     sucursal: "Sucursal Central",
+//     codificacion: "ABC123",
+//     correo: "contacto@panaboxlogistics.com",
+//     telefono: "+123456789",
+//     direccion: "7854 NW 46TH ST UNIT 2",
+//     maps: "https://google.com",
+//   } as tenantSchema.Sucursales,
+//   total: 12,
+// } satisfies InvoiceEmailProps;
+
 export default InvoiceEmail;
 
 // Styles
@@ -231,20 +236,20 @@ const main = {
   backgroundColor: "#f6f9fc",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  padding: "45px 0",
 };
 
 const container = {
   backgroundColor: "#ffffff",
   margin: "0 auto",
-  padding: "0px 0 32px",
-  marginBottom: "64px",
+  padding: "0 0 32px",
   maxWidth: "600px",
   borderRadius: "12px",
   boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
 };
 
 const header = {
-  backgroundColor: "#1e40af",
+  backgroundColor: "#233EDE",
   padding: "32px 24px",
   textAlign: "center" as const,
   borderTopLeftRadius: "12px",
@@ -256,8 +261,6 @@ const logoStyle = {
   height: "auto",
   margin: "0 auto 24px",
   display: "block",
-  backgroundColor: "rgba(255, 255, 255, 0.8)",
-  borderRadius: "10px",
 };
 
 const statusBadge = {

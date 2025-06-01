@@ -288,3 +288,5 @@ export type TrackingsWithSucursal = InferResultType<
 
 export type Session = typeof session.$inferSelect;
 export type Users = typeof users.$inferSelect;
+
+export type FacturaWithRelations = FacturasWithTrackings & FacturasWithCliente;
