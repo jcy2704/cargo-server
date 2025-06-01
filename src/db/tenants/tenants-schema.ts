@@ -11,7 +11,7 @@ import {
 } from "drizzle-orm/mysql-core";
 
 import { relations } from "drizzle-orm";
-// import type { InferResultType } from "./extras";
+import type { InferResultType } from "./extras";
 
 export const companies = mysqlTable("companies", {
   companyId: int("companyId").autoincrement().primaryKey(),
@@ -266,25 +266,25 @@ export type NewTrackings = typeof trackings.$inferInsert;
 export type Reportes = typeof reportes.$inferSelect;
 export type NewReportes = typeof reportes.$inferInsert;
 
-// export type UsuariosWithSucursal = InferResultType<
-//   "usuarios",
-//   { sucursal: true }
-// >;
+export type UsuariosWithSucursal = InferResultType<
+  "usuarios",
+  { sucursal: true }
+>;
 
-// export type FacturasWithTrackings = InferResultType<
-//   "facturas",
-//   { trackings: true }
-// >;
+export type FacturasWithTrackings = InferResultType<
+  "facturas",
+  { trackings: true }
+>;
 
-// export type FacturasWithCliente = InferResultType<
-//   "facturas",
-//   { cliente: { with: { sucursal: true } } }
-// >;
+export type FacturasWithCliente = InferResultType<
+  "facturas",
+  { cliente: { with: { sucursal: true } } }
+>;
 
-// export type TrackingsWithSucursal = InferResultType<
-//   "trackings",
-//   { sucursal: true }
-// >;
+export type TrackingsWithSucursal = InferResultType<
+  "trackings",
+  { sucursal: true }
+>;
 
 export type Session = typeof session.$inferSelect;
 export type Users = typeof users.$inferSelect;

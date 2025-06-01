@@ -16,6 +16,8 @@
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.44.0",
     "hono": "^4.7.10",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "mysql2": "^3.14.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",

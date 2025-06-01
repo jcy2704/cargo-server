@@ -13,13 +13,13 @@ import {
   Row,
 } from "@react-email/components";
 import * as React from "react";
+import * as tenantSchema from "@/db/tenants/tenants-schema";
 
 export interface NewCustomerEmailProps {
   nombre: string;
   apellido: string;
   casillero: string;
-  sucursal: string;
-  codigo_de_compania: string;
+  sucursal: tenantSchema.Sucursales;
   correo: string;
   logo: string;
   cedula: string;
@@ -31,7 +31,6 @@ export const NewCustomerEmail: React.FC<Readonly<NewCustomerEmailProps>> = ({
   apellido,
   casillero,
   sucursal,
-  codigo_de_compania,
   logo,
   cedula,
   telefono,
@@ -127,7 +126,7 @@ export const NewCustomerEmail: React.FC<Readonly<NewCustomerEmailProps>> = ({
           <Img src={logo} alt="Logo" style={styles.logo} />
           <Heading style={styles.heading}>Nuevo Casillero Registrado</Heading>
           <Text style={styles.paragraph}>
-            Un nuevo cliente se ha registrado en la sucursal {sucursal}. Debajo
+            Un nuevo cliente se ha registrado en la sucursal {sucursal.sucursal}. Debajo
             tendrás la información del casillero del cliente.
           </Text>
 
@@ -170,11 +169,11 @@ export const NewCustomerEmail: React.FC<Readonly<NewCustomerEmailProps>> = ({
               Información del Casillero (Aéreo)
             </Heading>
             <Text style={{ ...styles.paragraph, marginBottom: 0 }}>
-              Nombre: {codigo_de_compania} {nombre} {apellido}
+              Nombre: {sucursal.codificacion} {nombre} {apellido}
               <br />
-              Dirección: {direccion.direccion1} {codigo_de_compania}
+              Dirección: {direccion.direccion1} {sucursal.codificacion}
               <br />
-              Línea 2: {codigo_de_compania}
+              Línea 2: {sucursal.codificacion}
               {casillero}
               <br />
               Ciudad: {direccion.ciudad}

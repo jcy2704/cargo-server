@@ -3,12 +3,15 @@ import * as tenantSchema from "@/db/tenants/tenants-schema";
 import { eq } from "drizzle-orm";
 import { type MySql2Database } from "drizzle-orm/mysql2";
 import { WelcomeEmail, type WelcomeEmailProps } from "@/lib/emails/welcome";
+import { InvoiceEmail, type InvoiceEmailProps } from "@/lib/emails/factura";
 import {
   NewCustomerEmail,
   type NewCustomerEmailProps,
 } from "@/lib/emails/new-customer";
 import resend from "@/lib/resend";
 import { getFriendlyUrl } from "@/lib/s3";
+import { getFacturas, groupPdfsByClient } from "./utils/facturas-utils";
+import generatePdfsInBatches from "./utils/generate-pdf-batch";
 
 type Variables = {
   tenantDb: MySql2Database<typeof tenantSchema>;
@@ -36,12 +39,21 @@ emails.post("/bienvenida", async (c) => {
   try {
     const [company, sucursal] = await Promise.all([
       tenantDb
-        .select()
+        .select({
+          company: tenantSchema.companies.company,
+          logo: tenantSchema.companies.logo,
+          dominio: tenantSchema.companies.dominio,
+        })
         .from(tenantSchema.companies)
         .limit(1)
         .then((res) => res[0]),
       tenantDb
-        .select()
+        .select({
+          sucursal: tenantSchema.sucursales.sucursal,
+          codificacion: tenantSchema.sucursales.codificacion,
+          correo: tenantSchema.sucursales.correo,
+          telefono: tenantSchema.sucursales.telefono,
+        })
         .from(tenantSchema.sucursales)
         .where(eq(tenantSchema.sucursales.sucursalId, sucursalId))
         .limit(1)
@@ -58,8 +70,7 @@ emails.post("/bienvenida", async (c) => {
       nombre,
       apellido,
       casillero: String(casillero),
-      sucursal: sucursal.sucursal,
-      codigo_de_compania: sucursal.codificacion as string,
+      sucursal: sucursal as tenantSchema.Sucursales,
       nombre_de_compania: company.company,
       logo,
     } satisfies WelcomeEmailProps;
@@ -92,6 +103,96 @@ emails.post("/bienvenida", async (c) => {
     console.log(e);
     return c.json({ error: "Failed to send email" }, 500);
   }
+});
+
+emails.post("/send-bulk-facturas", async (c) => {
+  const { facturaIds } = (await c.req.json()) as {
+    facturaIds: number[];
+  };
+
+  if (!Array.isArray(facturaIds) || facturaIds.length === 0) {
+    return c.json({ error: "Invalid facturaIds" }, 400);
+  }
+
+  const tenantDb = c.get("tenantDb");
+
+  type FacturaWithRelations = tenantSchema.FacturasWithTrackings &
+    tenantSchema.FacturasWithCliente;
+
+  queueMicrotask(async () => {
+    try {
+      const [company, facturas] = await Promise.all([
+        tenantDb
+          .select({
+            company: tenantSchema.companies.company,
+            logo: tenantSchema.companies.logo,
+            dominio: tenantSchema.companies.dominio,
+          })
+          .from(tenantSchema.companies)
+          .limit(1)
+          .then((res) => res[0]),
+        getFacturas(tenantDb, facturaIds, c),
+      ]);
+
+      if (!company) {
+        return c.json({ error: "Company not found" }, 404);
+      }
+
+      const logo = getFriendlyUrl(company.logo as string);
+      const pdfs = await generatePdfsInBatches(
+        facturas as FacturaWithRelations[],
+        company.company,
+        logo
+      );
+      const grouped = groupPdfsByClient(
+        facturas as FacturaWithRelations[],
+        pdfs
+      );
+
+      for (let i = 0; i < grouped.length; i += 5) {
+        const batch = grouped.slice(i, i + 5);
+
+        await Promise.allSettled(
+          batch.map(
+            async ({
+              correo,
+              pdfs,
+              nombre,
+              total,
+              trackings,
+              casillero,
+              sucursal,
+            }) =>
+              resend.emails.send({
+                from: `${company.company} <no-reply-info@resend.dev>`, // TODO: change to company email before prod
+                to: "sjcydev12@gmail.com", // TODO: change to client email before prod
+                subject: `📦 ¡Tus Paquetes están listos para retirar!`,
+                react: await InvoiceEmail({
+                  nombre,
+                  casillero,
+                  trackings,
+                  total,
+                  logo,
+                  company: company.company,
+                  sucursal,
+                }),
+                attachments: pdfs.map((p) => ({
+                  filename: `factura-${p.facturaId}.pdf`,
+                  content: p.pdfBuffer,
+                })),
+              })
+          )
+        );
+      }
+
+      return c.json({ message: "Emails sent successfully" }, 200);
+    } catch (e) {
+      console.error(e);
+      return c.json({ error: "Failed to send emails" }, 500);
+    }
+  });
+
+  return c.json({ message: "Emails sent to background for sending" }, 202);
 });
 
 export default emails;
