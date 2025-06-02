@@ -167,8 +167,8 @@ export const InvoiceEmail: React.FC<Readonly<InvoiceEmailProps>> = ({
             </Section>
 
             {/* Additional Info */}
-            <Section style={infoCard}>
-              <Text style={infoText}>
+            <Section style={warningCard}>
+              <Text style={warningText}>
                 Puedes encontrar también adjuntado la factura con más detalles
                 de tu envío.
               </Text>
@@ -249,7 +249,7 @@ const container = {
 };
 
 const header = {
-  backgroundColor: "#233EDE",
+  backgroundColor: "#3245F2",
   padding: "32px 24px",
   textAlign: "center" as const,
   borderTopLeftRadius: "12px",
@@ -261,6 +261,8 @@ const logoStyle = {
   height: "auto",
   margin: "0 auto 24px",
   display: "block",
+  filter:
+    "drop-shadow(0 0 0 white) drop-shadow(0.5px 0 0 white) drop-shadow(-1px 0 0 white) drop-shadow(0 1px 0 white) drop-shadow(0 -1px 0 white)",
 };
 
 const statusBadge = {
@@ -452,6 +454,21 @@ const infoCard = {
 
 const infoText = {
   color: "#166534",
+  fontSize: "14px",
+  lineHeight: "1.5",
+  margin: "0",
+};
+
+const warningCard = {
+  backgroundColor: "#fef3c7",
+  border: "1px solid #fbbf24",
+  borderRadius: "8px",
+  padding: "16px",
+  margin: "0 0 32px 0",
+};
+
+const warningText = {
+  color: "#92400e",
   fontSize: "14px",
   lineHeight: "1.5",
   margin: "0",

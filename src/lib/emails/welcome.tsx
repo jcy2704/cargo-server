@@ -191,19 +191,14 @@ export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
           <Section style={footer}>
             <Text style={footerText}>¿Necesitas ayuda? Contáctanos</Text>
             <Row>
-              <Column align="right" style={{ width: "45%" }}>
-                <Link href={`mailto:${sucursal.correo}`} style={footerLink}>
-                  {sucursal.correo}
-                </Link>
-              </Column>
-              <Column style={{ width: "10%" }}>
-                <Text style={footerSeparator}>|</Text>
-              </Column>
-              <Column align="left" style={{ width: "45%" }}>
-                <Link href={`tel:${sucursal.telefono}`} style={footerLink}>
-                  {sucursal.telefono}
-                </Link>
-              </Column>
+              <Link href={`mailto:${sucursal.correo}`} style={footerLink}>
+                {sucursal.correo}
+              </Link>
+            </Row>
+            <Row>
+              <Link href={`tel:${sucursal.telefono}`} style={footerLink}>
+                {sucursal.telefono}
+              </Link>
             </Row>
             <Text style={copyright}>
               © {new Date().getFullYear()} Todos los derechos reservados.
@@ -238,6 +233,7 @@ const main = {
   backgroundColor: "#f6f9fc",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  padding: "45px 0",
 };
 
 const container = {
@@ -251,7 +247,7 @@ const container = {
 };
 
 const header = {
-  backgroundColor: "#1e40af",
+  backgroundColor: "#3245F2",
   padding: "32px 24px",
   textAlign: "center" as const,
   borderTopLeftRadius: "12px",
@@ -263,8 +259,6 @@ const logoStyle = {
   height: "auto",
   margin: "0 auto 24px",
   display: "block",
-  backgroundColor: "rgba(255, 255, 255, 0.8)",
-  borderRadius: "10px",
 };
 
 const statusBadge = {
