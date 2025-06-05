@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { clients, type NewClient } from "../../db/schema";
 import { generateApiKey } from "@/utils/apiKeys";
 import { encrypt } from "@/utils/crypto";
+import { redis } from "@/lib/redis";
 
 const tenants = new Hono();
 
@@ -26,5 +27,22 @@ tenants
 
     return c.json(tenant);
   });
+
+tenants.get("/usage", async (c) => {
+  const rows = await db.select().from(clients);
+
+  const usage = await Promise.all(
+    rows.map(async (client) => {
+      const key = `usage:tenant:${client.apiKey}`;
+      const count = await redis.get(key);
+      return {
+        domain: client.domain,
+        usage: Number(count ?? 0),
+      };
+    })
+  );
+
+  return c.json(usage);
+});
 
 export default tenants;

@@ -1,11 +1,8 @@
 import { generateInvoice } from "./generatePDF";
-import type {
-  FacturasWithTrackings,
-  FacturasWithCliente,
-} from "@/db/tenants/tenants-schema";
+import type { FacturaWithRelations } from "@/db/tenants/tenants-schema";
 
 export default async function generatePdfsInBatches(
-  facturas: (FacturasWithTrackings & FacturasWithCliente)[],
+  facturas: FacturaWithRelations[],
   company: string,
   logo: string,
   batchSize = 5

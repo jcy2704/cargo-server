@@ -6,19 +6,24 @@
     "db:generate": "drizzle-kit generate --name",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "email-dev": "email dev"
+    "email-dev": "email dev",
+    "email:worker": "bun run src/workers/emailWorker.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.821.0",
     "@aws-sdk/s3-request-presigner": "^3.821.0",
     "@react-email/components": "0.0.41",
+    "@types/lodash": "^4.17.17",
     "@types/react": "^19.1.6",
+    "bullmq": "^5.53.2",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.44.0",
     "hono": "^4.7.10",
+    "ioredis": "^5.6.1",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "mysql2": "^3.14.1",
+    "p-limit": "^6.2.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "resend": "^4.5.1"
