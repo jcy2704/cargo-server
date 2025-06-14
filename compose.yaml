@@ -26,5 +26,13 @@ services:
     ports:
       - "3306:3306"
 
+  email-worker:
+    build: .
+    command: bun run src/workers/emailWorker.ts
+    environment:
+      - UPSTASH_REDIS_URL=${UPSTASH_REDIS_URL}
+    deploy:
+      replicas: 2
+
 volumes:
   db-data:

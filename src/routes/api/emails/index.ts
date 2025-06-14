@@ -12,10 +12,11 @@ import {
 import resend from "@/lib/resend";
 import { getFriendlyUrl } from "@/lib/s3";
 import { getFacturas } from "./utils/facturas-utils";
-import { generateInvoice } from "./utils/generatePDF";
+import { generateInvoiceBuffer } from "@/lib/invoices/invoice";
 import { emailQueue } from "@/lib/redis";
 import { db as sharedDb } from "@/db";
 import { clients } from "@/db/schema";
+import chunk from "lodash.chunk";
 
 type Variables = {
   tenantDb: MySql2Database<typeof tenantSchema>;
@@ -44,7 +45,6 @@ emails.get("/status/:jobId", async (c) => {
       returnValue: job.returnvalue,
     });
   } catch (err) {
-    console.error("❌ Error checking job status", err);
     return c.json({ error: "Internal error" }, 500);
   }
 });
@@ -141,7 +141,6 @@ emails.post("/send-bulk-facturas", async (c) => {
     return c.json({ error: "Invalid facturaIds" }, 400);
   }
 
-  // Get encrypted dbUrl from client API key to pass into job
   const apiKey = c.req.header("Authorization")?.replace("Bearer ", "").trim();
   const client = (
     await sharedDb
@@ -155,13 +154,18 @@ emails.post("/send-bulk-facturas", async (c) => {
     return c.json({ error: "Unauthorized" }, 403);
   }
 
-  // Enqueue background job: just facturaIds + encrypted dbUrl
-  await emailQueue.add("bulk-factura", {
-    facturaIds,
-    dbUrl: client.dbUrl,
-  });
+  const jobs = [];
 
-  return c.json({ message: "Factura job queued" }, 202);
+  for (const facturaChunk of chunk(facturaIds, 10)) {
+    const job = await emailQueue.add("bulk-factura", {
+      facturaIds: facturaChunk,
+      dbUrl: client.dbUrl,
+    });
+
+    jobs.push(job.id);
+  }
+
+  return c.json({ message: "Factura jobs queued", jobIds: jobs }, 202);
 });
 
 emails.post("/send-factura", async (c) => {
@@ -196,11 +200,11 @@ emails.post("/send-factura", async (c) => {
       const logo = getFriendlyUrl(company.logo as string);
       const factura = facturas[0];
 
-      const pdf = await generateInvoice({
-        info: factura,
-        company: company.company,
+      const pdf = await generateInvoiceBuffer(
+        factura,
+        company.company,
         logo,
-      });
+      );
 
       await resend.emails.send({
         from: `${company.company} <no-reply-info@resend.dev>`, // TODO: change to company email before prod

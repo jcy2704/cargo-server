@@ -1,6 +1,5 @@
 import {
   Body,
-  Button,
   Container,
   Column,
   Head,
@@ -98,7 +97,7 @@ export const InvoiceEmail: React.FC<Readonly<InvoiceEmailProps>> = ({
                   <Column style={{ width: "50%", paddingLeft: "8px" }}>
                     <Section style={totalCard}>
                       <Text style={totalLabel}>TOTAL</Text>
-                      <Text style={totalNumber}>${total}</Text>
+                      <Text style={totalNumber}>${total.toFixed(2)}</Text>
                     </Section>
                   </Column>
                 </Row>
@@ -444,21 +443,21 @@ const cardsContainer = {
   margin: "0 0 20px 0",
 };
 
-const infoCard = {
-  backgroundColor: "#f0fdf4",
-  border: "1px solid #bbf7d0",
-  borderRadius: "8px",
-  padding: "16px",
-  margin: "0 0 32px 0",
-};
-
-const infoText = {
-  color: "#166534",
-  fontSize: "14px",
-  lineHeight: "1.5",
-  margin: "0",
-};
-
+// const infoCard = {
+//   backgroundColor: "#f0fdf4",
+//   border: "1px solid #bbf7d0",
+//   borderRadius: "8px",
+//   padding: "16px",
+//   margin: "0 0 32px 0",
+// };
+//
+// const infoText = {
+//   color: "#166534",
+//   fontSize: "14px",
+//   lineHeight: "1.5",
+//   margin: "0",
+// };
+//
 const warningCard = {
   backgroundColor: "#fef3c7",
   border: "1px solid #fbbf24",
@@ -508,11 +507,11 @@ const footerLink = {
   textDecoration: "none",
 };
 
-const footerSeparator = {
-  color: "#d1d5db",
-  margin: "0 8px",
-  fontSize: "14px",
-};
+// const footerSeparator = {
+//   color: "#d1d5db",
+//   margin: "0 8px",
+//   fontSize: "14px",
+// };
 
 const copyright = {
   color: "#9ca3af",

@@ -6,13 +6,14 @@ import {
   getFacturas,
   groupPdfsByClient,
 } from "@/routes/api/emails/utils/facturas-utils";
-import generatePdfsInBatches from "@/routes/api/emails/utils/generate-pdf-batch";
+import { generatePDFBatch } from "@/routes/api/emails/utils/generate-pdf-batch";
 import { getFriendlyUrl } from "@/lib/s3";
 import * as tenantSchema from "@/db/tenants/tenants-schema";
 import { emailQueue } from "@/lib/redis";
 import pLimit from "p-limit";
 import type { FacturaWithRelations } from "@/db/tenants/tenants-schema";
 import { inArray } from "drizzle-orm";
+import { ReactNode } from "react";
 
 new Worker(
   "email-jobs",
@@ -35,17 +36,18 @@ new Worker(
       ]);
 
       const logo = getFriendlyUrl(company.logo as string);
-      const pdfs = await generatePdfsInBatches(
+      const pdfs = await generatePDFBatch(
         facturas as FacturaWithRelations[],
         company.company,
         logo
       );
+
       const grouped = groupPdfsByClient(
         facturas as FacturaWithRelations[],
         pdfs
       );
 
-      const limit = pLimit(2);
+      const limit = pLimit(1);
 
       const results = await Promise.allSettled(
         grouped.map((group) =>
@@ -72,6 +74,7 @@ new Worker(
               });
 
               if (response.error) {
+                console.error("Response error:", response.error);
                 throw response.error;
               }
 
@@ -84,6 +87,7 @@ new Worker(
 
               return { to, status: "sent" };
             } catch (err) {
+              console.error("worker: ", err);
               throw err;
             }
           })

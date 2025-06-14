@@ -4,14 +4,12 @@ import { applyPlugin } from "jspdf-autotable";
 import { getBase64FromUrl } from "./get-base64-url";
 import calculateDimensions from "./calculate-dimensions";
 import type {
-  FacturasWithTrackings,
   Trackings,
-  Companies,
   Sucursales,
   UsuariosWithSucursal,
-  FacturasWithCliente,
   FacturaWithRelations,
 } from "@/db/tenants/tenants-schema";
+
 applyPlugin(jsPDF);
 
 // Constants
