@@ -28,15 +28,10 @@ facturas.get("/", async (c) => {
   }
 
   if (search?.trim()) {
-    const pattern = `%${search.trim()}%`;
 
     conditions.push(
       or(
-        sql`CAST(${facturasTable.casillero} AS CHAR) LIKE ${pattern}`,
-        sql`CAST(${facturasTable.facturaId} AS CHAR) LIKE ${pattern}`,
-        like(usuarios.cedula, pattern),
-        like(usuarios.nombre, pattern),
-        like(usuarios.apellido, pattern)
+        sql`${usuarios.casillero} = ${parseInt(search) || 0}`,
       ) as SQL<unknown>
     );
   }
@@ -169,8 +164,6 @@ facturas.get("/no-enviados", async (c) => {
       .leftJoin(usuarios, eq(facturasTable.clienteId, usuarios.id))
       .leftJoin(sucursales, eq(facturasTable.sucursalId, sucursales.sucursalId))
       .orderBy(desc(facturasTable.facturaId))
-      .limit(limit)
-      .offset(offset),
   ]);
 
   const totalPages = Math.ceil(total / limit);

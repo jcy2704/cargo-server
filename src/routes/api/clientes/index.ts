@@ -21,16 +21,15 @@ clientes.get("/", async (c) => {
     conditions.push(eq(usuarios.sucursalId, sucursalId));
   }
 
+  let pattern = search;
   if (search?.trim()) {
     const pattern = `%${search.trim()}%`;
 
     conditions.push(
       or(
-        sql`CAST(${usuarios.casillero} AS CHAR) LIKE ${pattern}`,
+        sql`${usuarios.casillero} = ${parseInt(search) || 0}`,
         like(usuarios.nombre, pattern),
         like(usuarios.apellido, pattern),
-        like(usuarios.correo, pattern),
-        like(usuarios.cedula, pattern)
       ) as SQL<unknown>
     );
   }
@@ -64,6 +63,14 @@ clientes.get("/", async (c) => {
         nacimiento: usuarios.nacimiento,
         sexo: usuarios.sexo,
         sucursal: sucursales.sucursal,
+        relevance: sql<number>`
+          CASE 
+            WHEN ${usuarios.casillero} = ${search ? parseInt(search) || 0 : 0} THEN 100
+            WHEN ${usuarios.nombre} LIKE ${pattern} THEN 80
+            WHEN ${usuarios.apellido} LIKE ${pattern} THEN 75
+            ELSE 0
+          END
+        `.as('relevance')
       })
       .from(usuarios)
       .where(and(...conditions))
