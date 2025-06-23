@@ -27,6 +27,7 @@
     "lodash.chunk": "^4.2.0",
     "mysql2": "^3.14.1",
     "p-limit": "^6.2.0",
+    "quick-lru": "^7.0.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "resend": "^4.5.1"
