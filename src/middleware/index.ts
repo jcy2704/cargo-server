@@ -1,9 +1,10 @@
 import { MiddlewareHandler } from "hono";
 import { db as sharedDb } from "@/db";
 import { clients } from "@/db/schema";
-import { getDrizzleForTenant } from "@/db/tenants/tenant-drizzle";
+// import { getDrizzleForTenant } from "@/db/tenants/tenant-drizzle";
 import { eq } from "drizzle-orm";
 import { redis } from "@/lib/redis";
+import { tenantDbFactory } from "@/lib/tenantDbFactory";
 
 export const withTenantDrizzle: MiddlewareHandler = async (c, next) => {
   const authHeader = c.req.header("Authorization");
@@ -25,7 +26,7 @@ export const withTenantDrizzle: MiddlewareHandler = async (c, next) => {
     return c.text("Invalid API key", 403);
   }
 
-  const tenantDb = await getDrizzleForTenant(client.dbUrl);
+  const tenantDb = await tenantDbFactory.getClient(client.dbUrl);
 
   c.set("tenantDb", tenantDb);
 

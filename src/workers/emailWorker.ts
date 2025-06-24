@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { getDrizzleForTenant } from "@/db/tenants/tenant-drizzle";
+// import { getDrizzleForTenant } from "@/db/tenants/tenant-drizzle";
 import resend from "@/lib/resend";
 import { InvoiceEmail } from "@/lib/emails/factura";
 import {
@@ -13,7 +13,7 @@ import { emailQueue } from "@/lib/redis";
 import pLimit from "p-limit";
 import type { FacturaWithRelations } from "@/db/tenants/tenants-schema";
 import { inArray } from "drizzle-orm";
-import { ReactNode } from "react";
+import { tenantDbFactory } from "@/lib/tenantDbFactory";
 
 new Worker(
   "email-jobs",
@@ -21,7 +21,7 @@ new Worker(
     const { facturaIds, dbUrl } = job.data;
 
     try {
-      const tenantDb = await getDrizzleForTenant(dbUrl);
+      const tenantDb = await tenantDbFactory.getClient(dbUrl);
 
       const [company, facturas] = await Promise.all([
         tenantDb
