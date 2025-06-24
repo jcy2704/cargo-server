@@ -6,8 +6,8 @@ import {
   timestamp,
   float,
   boolean,
-  json,
   longtext,
+  index,
 } from "drizzle-orm/mysql-core";
 
 import { relations } from "drizzle-orm";
@@ -41,7 +41,9 @@ export const sucursales = mysqlTable("sucursales", {
   companyId: int("company").references(() => companies.companyId),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").onUpdateNow(),
-});
+}, (table) => ({
+  sucursalIdx: index("sucursalIdx").on(table.sucursalId)
+}));
 
 export const users = mysqlTable("users", {
   id: varchar("id", {
@@ -110,7 +112,23 @@ export const usuarios = mysqlTable("usuarios", {
   archivadoAt: timestamp("archivadoAt"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").onUpdateNow(),
-});
+}, (table) => ({
+  // INDEX 1: Search composite (CRITICAL for your /clientes endpoint)
+  // Covers: All search patterns in your current UsuariosRepository
+  searchIdx: index("usuarios_search_idx").on(
+    table.archivado,    // Always filtered (false)
+    table.sucursalId,   // Common filter
+    table.casillero     // For ordering DESC + search
+  ),
+
+  // INDEX 2: Text search optimization (HIGH VALUE)
+  // Covers: nombre, apellido, cedula search patterns  
+  textSearchIdx: index("usuarios_text_search_idx").on(
+    table.nombre,
+    table.apellido,
+    table.cedula
+  ),
+}));
 
 export const facturas = mysqlTable("facturas", {
   facturaId: int("facturaId").autoincrement().primaryKey(),
@@ -147,7 +165,22 @@ export const facturas = mysqlTable("facturas", {
   canceladaAt: timestamp("canceladaAt"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").onUpdateNow(),
-});
+}, (table) => ({
+  masterIdx: index("facturas_master_idx").on(
+    table.cancelada,     // Always in WHERE clause
+    table.enviado,       // Always in WHERE clause  
+    table.sucursalId,    // Common filter
+    table.facturaId      // For ORDER BY DESC
+  ),
+
+  // INDEX 2: Search optimization
+  // Covers: casillero and facturaId searches
+  searchIdx: index("facturas_search_idx").on(table.casillero),
+
+  // INDEX 3: Foreign key for JOINs
+  // Covers: JOIN performance with usuarios table
+  clienteIdx: index("facturas_cliente_idx").on(table.clienteId),
+}));
 
 export const reportes = mysqlTable("reportes", {
   reporteId: int("reporteId").autoincrement().primaryKey(),
@@ -177,7 +210,9 @@ export const trackings = mysqlTable("trackings", {
   canceladaAt: timestamp("canceladaAt"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").onUpdateNow(),
-});
+}, (table) => ({
+  facturaIdx: index("trackings_factura_idx").on(table.facturaId),
+}));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   sucursal: one(sucursales, {
