@@ -1,17 +1,22 @@
 services:
   cargo-api:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
     volumes:
       - .:/app
     working_dir: /app
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./.env
     environment:
-      - DATABASE_URL=mysql://root:mysecretpassword@db:3306/cargo
-      - CRYPTO_KEY=980e0e27cc9525cc3fbf9c0c21883fe0de5edfeee958398ca56b6c54b5cd5e5b
-      - RESEND_API_KEY=${RESEND_API_KEY}
+      - NODE_ENV=development
 
   db:
     image: mariadb:10.11
@@ -25,14 +30,39 @@ services:
       - db-data:/var/lib/mysql
     ports:
       - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pmysecretpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    ports:
+      - "6379:6379" # expose only for local dev; remove in prod
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "PING"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   email-worker:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     command: bun run src/workers/emailWorker.ts
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
-      - UPSTASH_REDIS_URL=${UPSTASH_REDIS_URL}
+      - REDIS_URL=${REDIS_URL}
     deploy:
       replicas: 2
 
 volumes:
   db-data:
+  redis-data:

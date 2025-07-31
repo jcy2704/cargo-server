@@ -1,10 +1,35 @@
 import { Hono } from "hono";
 import type { Variables } from "../index";
 import { usuarios, sucursales } from "@/db/tenants/tenants-schema";
-import { eq, or, like, and, count, desc, sql } from "drizzle-orm";
+import { eq, or, like, and, count, desc, sql, lt } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 const clientes = new Hono<{ Variables: Variables }>();
+
+clientes.post("/all", async (c) => {
+  const db = c.get("tenantDb");
+  const { cursor } = await c.req.json();
+
+  const clientes = await db.select({
+    id: usuarios.id,
+    nombre: usuarios.nombre,
+    apellido: usuarios.apellido,
+    correo: usuarios.correo,
+    casillero: usuarios.casillero,
+    cedula: usuarios.cedula,
+    telefono: usuarios.telefono,
+    nacimiento: usuarios.nacimiento,
+    sexo: usuarios.sexo,
+    sucursal: sucursales.sucursal,
+    sucursalId: sucursales.sucursalId
+  })
+    .from(usuarios)
+    .where(and(eq(usuarios.archivado, false), lt(usuarios.casillero, cursor)))
+    .leftJoin(sucursales, eq(usuarios.sucursalId, sucursales.sucursalId))
+    .orderBy(desc(usuarios.casillero))
+
+  return c.json({ clientes });
+})
 
 clientes.get("/", async (c) => {
   const search = c.req.query("search") ?? null;
