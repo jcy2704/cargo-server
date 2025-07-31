@@ -5,6 +5,7 @@ import {
   sucursales,
   trackings,
 } from "@/db/tenants/tenants-schema";
+import * as tenantSchema from "@/db/tenants/tenants-schema";
 import type {
   FacturaWithRelations,
   UsuariosWithSucursal,
@@ -14,9 +15,9 @@ import { eq, inArray } from "drizzle-orm";
 import type { Context } from "hono";
 
 export const getFacturas = async (
-  tenantDb: MySql2Database<any>,
+  tenantDb: MySql2Database<typeof tenantSchema>,
   facturaIds: number[],
-  c: Context<{ Variables: { tenantDb: MySql2Database<any> } }>
+  c?: Context<{ Variables: { tenantDb: MySql2Database<typeof tenantSchema> } }>
 ) => {
   const dbFacturas = await tenantDb
     .select({
@@ -53,7 +54,12 @@ export const getFacturas = async (
     .leftJoin(trackings, eq(tenantFacturas.facturaId, trackings.facturaId));
 
   if (!dbFacturas.length) {
-    return c.json({ error: "Facturas not found" }, 400);
+    const errMsg = "No facturas found for the provided IDs.";
+    if (c) {
+      return c.json({ error: errMsg }, 400);
+    } else {
+      throw new Error(errMsg);
+    }
   }
 
   type TrackingRow = (typeof dbFacturas)[number]["trackings"];
@@ -85,10 +91,7 @@ export const getFacturas = async (
     }
   });
 
-  // Final grouped result
-  const facturas = Array.from(facturasMap.values());
-
-  return facturas as FacturaWithRelations[];
+  return Array.from(facturasMap.values()) as FacturaWithRelations[];
 };
 
 type PdfWithMeta = {

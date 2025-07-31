@@ -11,15 +11,43 @@ import {
 } from "@/lib/emails/new-customer";
 import resend from "@/lib/resend";
 import { getFriendlyUrl } from "@/lib/s3";
-import { getFacturas, groupPdfsByClient } from "./utils/facturas-utils";
-import generatePdfsInBatches from "./utils/generate-pdf-batch";
-import { generateInvoice } from "./utils/generatePDF";
+import { getFacturas } from "./utils/facturas-utils";
+import { generateInvoiceBuffer } from "@/lib/invoices/invoice";
+import { emailQueue } from "@/lib/redis";
+import { db as sharedDb } from "@/db";
+import { clients } from "@/db/schema";
+import chunk from "lodash.chunk";
 
 type Variables = {
   tenantDb: MySql2Database<typeof tenantSchema>;
 };
 
 const emails = new Hono<{ Variables: Variables }>();
+
+emails.get("/status/:jobId", async (c) => {
+  const jobId = c.req.param("jobId");
+
+  try {
+    const job = await emailQueue.getJob(jobId);
+    if (!job) return c.json({ status: "not found" }, 404);
+
+    const state = await job.getState();
+    const progress = job.progress;
+    const attempts = job.attemptsMade;
+    const failedReason = job.failedReason;
+
+    return c.json({
+      jobId,
+      status: state,
+      progress,
+      attempts,
+      failedReason,
+      returnValue: job.returnvalue,
+    });
+  } catch (err) {
+    return c.json({ error: "Internal error" }, 500);
+  }
+});
 
 emails.post("/bienvenida", async (c) => {
   const body = (await c.req.json()) as tenantSchema.NewUsuarios & {
@@ -108,90 +136,36 @@ emails.post("/bienvenida", async (c) => {
 });
 
 emails.post("/send-bulk-facturas", async (c) => {
-  const { facturaIds } = (await c.req.json()) as {
-    facturaIds: number[];
-  };
-
+  const { facturaIds } = (await c.req.json()) as { facturaIds: number[] };
   if (!Array.isArray(facturaIds) || facturaIds.length === 0) {
     return c.json({ error: "Invalid facturaIds" }, 400);
   }
 
-  const tenantDb = c.get("tenantDb");
+  const apiKey = c.req.header("Authorization")?.replace("Bearer ", "").trim();
+  const client = (
+    await sharedDb
+      .select()
+      .from(clients)
+      .where(eq(clients.apiKey, apiKey!))
+      .limit(1)
+  )[0];
 
-  queueMicrotask(async () => {
-    try {
-      const [company, facturas] = await Promise.all([
-        tenantDb
-          .select({
-            company: tenantSchema.companies.company,
-            logo: tenantSchema.companies.logo,
-            dominio: tenantSchema.companies.dominio,
-          })
-          .from(tenantSchema.companies)
-          .limit(1)
-          .then((res) => res[0]),
-        getFacturas(tenantDb, facturaIds, c),
-      ]);
+  if (!client) {
+    return c.json({ error: "Unauthorized" }, 403);
+  }
 
-      if (!company) {
-        return c.json({ error: "Company not found" }, 404);
-      }
+  const jobs = [];
 
-      const logo = getFriendlyUrl(company.logo as string);
-      const pdfs = await generatePdfsInBatches(
-        facturas as FacturaWithRelations[],
-        company.company,
-        logo
-      );
-      const grouped = groupPdfsByClient(
-        facturas as FacturaWithRelations[],
-        pdfs
-      );
+  for (const facturaChunk of chunk(facturaIds, 10)) {
+    const job = await emailQueue.add("bulk-factura", {
+      facturaIds: facturaChunk,
+      dbUrl: client.dbUrl,
+    });
 
-      for (let i = 0; i < grouped.length; i += 5) {
-        const batch = grouped.slice(i, i + 5);
+    jobs.push(job.id);
+  }
 
-        await Promise.allSettled(
-          batch.map(
-            async ({
-              correo,
-              pdfs,
-              nombre,
-              total,
-              trackings,
-              casillero,
-              sucursal,
-            }) =>
-              resend.emails.send({
-                from: `${company.company} <no-reply-info@resend.dev>`, // TODO: change to company email before prod
-                to: "sjcydev12@gmail.com", // TODO: change to client email before prod
-                subject: `📦 ¡${trackings.length > 1 ? "Tus paquetes están listos" : "Tu paquete está listo"} para retirar!`,
-                react: await InvoiceEmail({
-                  nombre,
-                  casillero,
-                  trackings,
-                  total,
-                  logo,
-                  company: company.company,
-                  sucursal,
-                }),
-                attachments: pdfs.map((p) => ({
-                  filename: `Factura-${p.facturaId}.pdf`,
-                  content: p.pdfBuffer,
-                })),
-              })
-          )
-        );
-      }
-
-      return c.json({ message: "Emails sent successfully" }, 200);
-    } catch (e) {
-      console.error(e);
-      return c.json({ error: "Failed to send emails" }, 500);
-    }
-  });
-
-  return c.json({ message: "Emails sent to background for sending" }, 202);
+  return c.json({ message: "Factura jobs queued", jobIds: jobs }, 202);
 });
 
 emails.post("/send-factura", async (c) => {
@@ -226,11 +200,11 @@ emails.post("/send-factura", async (c) => {
       const logo = getFriendlyUrl(company.logo as string);
       const factura = facturas[0];
 
-      const pdf = await generateInvoice({
-        info: factura,
-        company: company.company,
+      const pdf = await generateInvoiceBuffer(
+        factura,
+        company.company,
         logo,
-      });
+      );
 
       await resend.emails.send({
         from: `${company.company} <no-reply-info@resend.dev>`, // TODO: change to company email before prod

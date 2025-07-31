@@ -1,10 +1,35 @@
 import { Hono } from "hono";
 import type { Variables } from "../index";
 import { usuarios, sucursales } from "@/db/tenants/tenants-schema";
-import { eq, or, like, and, count, desc, sql } from "drizzle-orm";
+import { eq, or, like, and, count, desc, sql, lt } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 const clientes = new Hono<{ Variables: Variables }>();
+
+clientes.post("/all", async (c) => {
+  const db = c.get("tenantDb");
+  const { cursor } = await c.req.json();
+
+  const clientes = await db.select({
+    id: usuarios.id,
+    nombre: usuarios.nombre,
+    apellido: usuarios.apellido,
+    correo: usuarios.correo,
+    casillero: usuarios.casillero,
+    cedula: usuarios.cedula,
+    telefono: usuarios.telefono,
+    nacimiento: usuarios.nacimiento,
+    sexo: usuarios.sexo,
+    sucursal: sucursales.sucursal,
+    sucursalId: sucursales.sucursalId
+  })
+    .from(usuarios)
+    .where(and(eq(usuarios.archivado, false), lt(usuarios.casillero, cursor)))
+    .leftJoin(sucursales, eq(usuarios.sucursalId, sucursales.sucursalId))
+    .orderBy(desc(usuarios.casillero))
+
+  return c.json({ clientes });
+})
 
 clientes.get("/", async (c) => {
   const search = c.req.query("search") ?? null;
@@ -21,16 +46,15 @@ clientes.get("/", async (c) => {
     conditions.push(eq(usuarios.sucursalId, sucursalId));
   }
 
+  let pattern = search;
   if (search?.trim()) {
     const pattern = `%${search.trim()}%`;
 
     conditions.push(
       or(
-        sql`CAST(${usuarios.casillero} AS CHAR) LIKE ${pattern}`,
+        sql`${usuarios.casillero} = ${parseInt(search) || 0}`,
         like(usuarios.nombre, pattern),
         like(usuarios.apellido, pattern),
-        like(usuarios.correo, pattern),
-        like(usuarios.cedula, pattern)
       ) as SQL<unknown>
     );
   }
@@ -64,6 +88,14 @@ clientes.get("/", async (c) => {
         nacimiento: usuarios.nacimiento,
         sexo: usuarios.sexo,
         sucursal: sucursales.sucursal,
+        relevance: sql<number>`
+          CASE 
+            WHEN ${usuarios.casillero} = ${search ? parseInt(search) || 0 : 0} THEN 100
+            WHEN ${usuarios.nombre} LIKE ${pattern} THEN 80
+            WHEN ${usuarios.apellido} LIKE ${pattern} THEN 75
+            ELSE 0
+          END
+        `.as('relevance')
       })
       .from(usuarios)
       .where(and(...conditions))
