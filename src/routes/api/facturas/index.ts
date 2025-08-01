@@ -1,11 +1,15 @@
 import { Hono } from "hono";
 import type { Variables } from "..";
 import {
+  companies,
   facturas as facturasTable,
   sucursales,
   usuarios,
 } from "@/db/tenants/tenants-schema";
-import { eq, and, desc, lt, or, like, sql, type SQL, count } from "drizzle-orm";
+import { eq, and, desc, lt } from "drizzle-orm";
+import { generateInvoiceStream } from "@/lib/invoices/invoice";
+import { FacturaRepository } from "@/core/repositories/FacturasRepository";
+import { getFriendlyUrl } from "@/lib/s3";
 
 const facturas = new Hono<{ Variables: Variables }>();
 
@@ -48,6 +52,38 @@ facturas.post("/", async (c) => {
   return c.json({
     facturas: facturasData,
   });
+});
+
+facturas.get("/descargar/:facturaId", async (c) => {
+  const { facturaId } = c.req.param();
+
+  const db = c.get("tenantDb");
+  const facturaRepo = new FacturaRepository(db);
+
+  const [{ company, logo }, factura] = await Promise.all([
+    db
+      .select({
+        company: companies.company,
+        logo: companies.logo,
+      })
+      .from(companies)
+      .limit(1)
+      .then(([res]) => ({
+        company: res.company,
+        logo: getFriendlyUrl(res.logo as string),
+      })),
+    facturaRepo.getWithRelations([Number(facturaId)]),
+  ]);
+
+  const pdfBuffer = await generateInvoiceStream(factura[0], company, logo);
+
+  return new Response(pdfBuffer, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="Factura-${facturaId}.pdf"`,
+    },
+  });
+
 });
 
 export default facturas;

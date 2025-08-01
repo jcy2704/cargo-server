@@ -13,7 +13,7 @@ import type {
   FacturaWithRelations,
 } from "@/db/tenants/tenants-schema";
 import chunk from 'lodash.chunk';
-import { readableStreamToArrayBuffer } from 'bun';
+import { renderToStream } from '@react-pdf/renderer';
 
 
 Font.register({
@@ -627,7 +627,7 @@ function preprocessInvoiceData(invoice: FacturaWithRelations): ProcessedInvoiceD
     sucursal: invoice.cliente!.sucursal,
   };
 }
-// Export function to generate PDF buffer
+
 export async function generateInvoiceBuffer(
   data: FacturaWithRelations,
   company: string,
@@ -639,4 +639,19 @@ export async function generateInvoiceBuffer(
   const pdfBuffer = await pdf(pdfDocument).toBlob();
 
   return Buffer.from(await pdfBuffer.arrayBuffer());
+}
+
+
+// Export function to generate PDF buffer
+export async function generateInvoiceStream(
+  data: FacturaWithRelations,
+  company: string,
+  logo?: string
+): Promise<ReadableStream> {
+  const processed = preprocessInvoiceData(data);
+
+  const pdfDocument = <ModernInvoiceDocument data={processed} company={company} logo={logo} />;
+  const stream = await renderToStream(pdfDocument);
+
+  return stream;
 }
