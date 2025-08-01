@@ -18,6 +18,8 @@ import { db as sharedDb } from "@/db";
 import { clients } from "@/db/schema";
 import chunk from "lodash.chunk";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 type Variables = {
   tenantDb: MySql2Database<typeof tenantSchema>;
 };
@@ -105,12 +107,18 @@ emails.post("/bienvenida", async (c) => {
       logo,
     } satisfies WelcomeEmailProps;
 
+    const from = isProduction
+      ? `${company.company} <no-reply-info@${company.dominio}>`
+      : `${company.company} <no-reply-info@resend.dev>`;
+
     await resend.emails.send({
-      from: `${company.company} <no-reply-info@resend.dev>`, // TODO: change to company email before prod
+      from,
       to: correo,
       subject: `Hola ${nombre}, tu casillero personal está lista!`,
       react: await WelcomeEmail({ ...compProps }),
     });
+
+    const adminTo = isProduction ? sucursal.correo : "sjcydev12@gmail.com";
 
     if (!reenviar) {
       const adminProps = {
@@ -121,8 +129,8 @@ emails.post("/bienvenida", async (c) => {
       } satisfies NewCustomerEmailProps;
 
       await resend.emails.send({
-        from: `${company.company} <no-reply-info@resend.dev>`, // TODO: change to company email before prod
-        to: correo, // TODO: change to sucursal email before prod
+        from,
+        to: adminTo,
         subject: `¡Nuevo Casillero Registrado!`,
         react: await NewCustomerEmail({ ...adminProps }),
       });
@@ -200,15 +208,17 @@ emails.post("/send-factura", async (c) => {
       const logo = getFriendlyUrl(company.logo as string);
       const factura = facturas[0];
 
-      const pdf = await generateInvoiceBuffer(
-        factura,
-        company.company,
-        logo,
-      );
+      const pdf = await generateInvoiceBuffer(factura, company.company, logo);
+
+      const from = isProduction
+        ? `${company.company} <no-reply-info@${company.dominio}>`
+        : `${company.company} <no-reply-info@resend.dev>`;
+
+      const to = isProduction ? factura.cliente!.correo : "sjcydev12@gmail.com";
 
       await resend.emails.send({
-        from: `${company.company} <no-reply-info@resend.dev>`, // TODO: change to company email before prod
-        to: "sjcydev12@gmail.com", // TODO: change to client email before prod
+        from,
+        to,
         subject: `📦 ¡${factura.trackings.length > 1 ? "Tus paquetes están listos" : "Tu paquete está listo"} para retirar!`,
         react: await InvoiceEmail({
           nombre: factura.cliente!.nombre,
