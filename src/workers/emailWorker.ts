@@ -16,30 +16,27 @@ new Worker(
   "email-jobs",
   async (job) => {
     const { facturaIds, dbUrl } = job.data;
-    const tenantDb = await tenantDbFactory.getClient(dbUrl);
-    const facturaRepo = new FacturaRepository(tenantDb);
 
     try {
-      const [{company, logo}, facturas] = await Promise.all([
+      const tenantDb = await tenantDbFactory.getClient(dbUrl);
+      const facturaRepo = new FacturaRepository(tenantDb);
+
+      const [company, facturas] = await Promise.all([
         tenantDb
           .select({
             company: tenantSchema.companies.company,
             logo: tenantSchema.companies.logo,
-            dominio: tenantSchema.companies.dominio,
           })
           .from(tenantSchema.companies)
           .limit(1)
-          .then(([res]) => ({
-            company: res.company,
-            domain: res.dominio,
-            logo: getFriendlyUrl(res.logo as string),
-          })),
+          .then((res) => res[0]),
         facturaRepo.getWithRelations(facturaIds),
       ]);
 
+      const logo = getFriendlyUrl(company.logo as string);
       const pdfs = await generatePDFBatch(
         facturas as FacturaWithRelations[],
-        company,
+        company.company,
         logo,
       );
 
@@ -54,8 +51,9 @@ new Worker(
         grouped.map((group) =>
           limit(async () => {
             const to = "sjcydev12@gmail.com"; // TODO: change to group.correo before prod
+            try {
               const response = await resend.emails.send({
-                from: `${company} <no-reply@resend.dev>`,
+                from: `${company.company} <no-reply@resend.dev>`,
                 to,
                 subject: `📦 ¡${group.trackings.length > 1 ? "Tus paquetes están listos" : "Tu paquete está listo"} para retirar!`,
                 react: await InvoiceEmail({
@@ -63,7 +61,7 @@ new Worker(
                   trackings: group.trackings,
                   casillero: group.casillero,
                   logo,
-                  company: company,
+                  company: company.company,
                   sucursal: group.sucursal,
                   total: group.total,
                 }),
@@ -73,11 +71,20 @@ new Worker(
                 })),
               });
 
-              if (response.error) throw response.error;
+              if (response.error) {
+                console.error("Response error:", response.error);
+                throw response.error;
+              }
 
-              await facturaRepo.markAsEnviado(group.pdfs.map(p => p.facturaId));
+              const facturaIds = group.pdfs.map((p) => p.facturaId);
+
+              facturaRepo.markAsEnviado(facturaIds);
 
               return { to, status: "sent" };
+            } catch (err) {
+              console.error("worker: ", err);
+              throw err;
+            }
           }),
         ),
       );
