@@ -12,6 +12,8 @@ import type { FacturaWithRelations } from "@/db/tenants/tenants-schema";
 import { tenantDbFactory } from "@/lib/tenantDbFactory";
 import { FacturaRepository } from "@/core/repositories/FacturasRepository";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 new Worker(
   "email-jobs",
   async (job) => {
@@ -56,10 +58,15 @@ new Worker(
           limit(async () => {
             await Bun.sleep(index * 500);
 
-            const to = "sjcydev12@gmail.com"; // TODO: change to group.correo before prod
+            const from = isProduction
+              ? `${company} <no-reply@${dominio}>`
+              : `${company} <no-reply@resend.dev>`;
+
+            const to = isProduction ? group.correo : "sjcydev12@gmail.com";
+
             try {
               const response = await resend.emails.send({
-                from: `${company} <no-reply@resend.dev>`,
+                from,
                 to,
                 subject: `📦 ¡${group.trackings.length > 1 ? "Tus paquetes están listos" : "Tu paquete está listo"} para retirar!`,
                 react: await InvoiceEmail({
@@ -82,7 +89,9 @@ new Worker(
                 throw response.error;
               }
 
-              await facturaRepo.markAsEnviado(group.pdfs.map(p => p.facturaId));
+              await facturaRepo.markAsEnviado(
+                group.pdfs.map((p) => p.facturaId),
+              );
 
               return { to, status: "sent" };
             } catch (err) {
@@ -97,7 +106,7 @@ new Worker(
       const failed = results.length - success;
 
       console.log(
-        `[email-worker] Job ${job.id} complete — Sent: ${success}, Failed: ${failed}`,
+        `[email-worker] Job ${job.id} complete — Sent: ${success}, Unsent: ${failed}`,
       );
 
       return { sent: success, failed };
