@@ -1,6 +1,6 @@
 import { randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 
-const key = Buffer.from(process.env.CRYPTO_KEY!, 'hex'); // 32 bytes
+const key = Buffer.from(String(process.env.CRYPTO_KEY!), 'hex'); // 32 bytes
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // recommended for GCM
