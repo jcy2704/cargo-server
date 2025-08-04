@@ -17,7 +17,7 @@ export const emailQueue = new Queue("email-jobs", {
       type: "exponential",
       delay: 5000,
     },
-    removeOnComplete: false,
+    removeOnComplete: true,
     removeOnFail: false,
   },
 });
