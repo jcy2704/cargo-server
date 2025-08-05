@@ -95,7 +95,6 @@ export class TenantDbFactory {
       if (now - conn.lastUsed > this.IDLE_TIMEOUT) {
         conn.pool.end().catch(console.error);
         this.tenantCache.delete(url);
-        console.log(`[TenantDbFactory] Disconnected idle pool: ${url}`);
       }
     }
   }
