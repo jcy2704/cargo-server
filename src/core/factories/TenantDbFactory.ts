@@ -3,6 +3,8 @@ import mysql from "mysql2/promise";
 import Redis from "ioredis";
 import QuickLRU from "quick-lru";
 import { encrypt, decrypt } from "@/utils/crypto";
+import { logger } from "@/lib/logger";
+import { TENANT_CONFIG } from "@/config/constants";
 
 type TenantConnection = {
   decryptedUrl: string;
@@ -12,9 +14,11 @@ type TenantConnection = {
 };
 
 export class TenantDbFactory {
-  private tenantCache = new QuickLRU<string, TenantConnection>({ maxSize: 10 });
-  private readonly IDLE_TIMEOUT = 1000 * 60 * 30;
-  private readonly CLEANUP_INTERVAL = 60_000;
+  private tenantCache = new QuickLRU<string, TenantConnection>({
+    maxSize: TENANT_CONFIG.CACHE_MAX_SIZE,
+  });
+  private readonly IDLE_TIMEOUT = TENANT_CONFIG.IDLE_TIMEOUT_MS;
+  private readonly CLEANUP_INTERVAL = TENANT_CONFIG.CLEANUP_INTERVAL_MS;
   private cleanupTimer: NodeJS.Timeout;
 
   constructor(private redis: Redis) {
@@ -36,8 +40,13 @@ export class TenantDbFactory {
           await conn.pool.query("SELECT 1");
           conn.lastUsed = Date.now();
           return conn.client;
-        } catch {
-          await conn.pool.end().catch(console.error);
+        } catch (err) {
+          logger.warn("Stale tenant connection detected, removing from cache", {
+            encryptedUrl: encryptedUrl.substring(0, 20) + "...",
+          });
+          await conn.pool.end().catch((e) =>
+            logger.error("Failed to close stale connection", { error: e })
+          );
           this.tenantCache.delete(url);
         }
         break;
@@ -49,7 +58,12 @@ export class TenantDbFactory {
     if (!decryptedUrl) {
       decryptedUrl = decrypt(encryptedUrl);
       if (!decryptedUrl) throw new Error("Failed to decrypt DB URL");
-      await this.redis.set(redisKey, decryptedUrl, "EX", 1800);
+      await this.redis.set(
+        redisKey,
+        decryptedUrl,
+        "EX",
+        TENANT_CONFIG.REDIS_TTL_SECONDS
+      );
     }
 
     const lockKey = `lock:tenant:${decryptedUrl}`;
@@ -71,8 +85,19 @@ export class TenantDbFactory {
     if (!acquired) throw new Error("Could not acquire DB connection lock");
 
     try {
-      // Prefer using fewer simultaneous connections
-      const pool = mysql.createPool({ uri: decryptedUrl, connectionLimit: 2 });
+      const pool = mysql.createPool({
+        uri: decryptedUrl,
+        connectionLimit: TENANT_CONFIG.CONNECTION_POOL_SIZE,
+        waitForConnections: true,
+        queueLimit: 10,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 0,
+      });
+
+      logger.debug("Creating new tenant database connection", {
+        encryptedUrl: encryptedUrl.substring(0, 20) + "...",
+      });
+
       const client = drizzle(pool);
       const connection: TenantConnection = {
         decryptedUrl,
@@ -83,9 +108,18 @@ export class TenantDbFactory {
       this.tenantCache.set(decryptedUrl, connection);
       return client;
     } catch (err) {
-      throw new Error("Failed to connect to tenant DB");
+      logger.error("Failed to connect to tenant database", {
+        encryptedUrl: encryptedUrl.substring(0, 20) + "...",
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
     } finally {
-      await this.redis.del(lockKey);
+      await this.redis.del(lockKey).catch((e) =>
+        logger.error("Failed to release connection lock", {
+          lockKey,
+          error: e,
+        })
+      );
     }
   }
 
@@ -93,16 +127,24 @@ export class TenantDbFactory {
     const now = Date.now();
     for (const [url, conn] of this.tenantCache.entries()) {
       if (now - conn.lastUsed > this.IDLE_TIMEOUT) {
-        conn.pool.end().catch(console.error);
+        logger.info("Closing idle tenant connection", {
+          idleTime: Math.round((now - conn.lastUsed) / 1000) + "s",
+        });
+        conn.pool.end().catch((e) =>
+          logger.error("Failed to close idle connection", { error: e })
+        );
         this.tenantCache.delete(url);
       }
     }
   }
 
   destroy(): void {
+    logger.info("Destroying TenantDbFactory, closing all connections");
     clearInterval(this.cleanupTimer);
     for (const [, conn] of this.tenantCache) {
-      conn.pool.end().catch(console.error);
+      conn.pool.end().catch((e) =>
+        logger.error("Failed to close connection on destroy", { error: e })
+      );
     }
   }
 }

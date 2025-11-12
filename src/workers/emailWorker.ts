@@ -1,23 +1,29 @@
 import { Worker } from "bullmq";
-// import { getDrizzleForTenant } from "@/db/tenants/tenant-drizzle";
 import resend from "@/lib/resend";
 import { InvoiceEmail } from "@/lib/emails/factura";
 import { groupPdfsByClient } from "@/routes/api/emails/utils/facturas-utils";
 import { generatePDFBatch } from "@/routes/api/emails/utils/generate-pdf-batch";
 import { getFriendlyUrl } from "@/lib/s3";
 import * as tenantSchema from "@/db/tenants/tenants-schema";
-import { emailQueue } from "@/lib/redis";
+import { emailQueue, redis } from "@/lib/redis";
 import pLimit from "p-limit";
 import type { FacturaWithRelations } from "@/db/tenants/tenants-schema";
 import { tenantDbFactory } from "@/lib/tenantDbFactory";
 import { FacturaRepository } from "@/core/repositories/FacturasRepository";
+import { logger } from "@/lib/logger";
+import { EMAIL_CONFIG } from "@/config/constants";
 
 const isProduction = process.env.NODE_ENV === "production";
 
-new Worker(
+const worker = new Worker(
   "email-jobs",
   async (job) => {
     const { facturaIds, dbUrl } = job.data;
+
+    logger.info("Processing email job", {
+      jobId: job.id,
+      facturaCount: facturaIds.length,
+    });
 
     try {
       const tenantDb = await tenantDbFactory.getClient(dbUrl);
@@ -51,12 +57,12 @@ new Worker(
         pdfs,
       );
 
-      const limit = pLimit(2);
+      const limit = pLimit(EMAIL_CONFIG.CONCURRENCY);
 
       const results = await Promise.allSettled(
         grouped.map((group, index) =>
           limit(async () => {
-            await Bun.sleep(index * 500);
+            await Bun.sleep(index * EMAIL_CONFIG.STAGGER_MS);
 
             const from = isProduction
               ? `${company} <no-reply@${dominio}>`
@@ -85,7 +91,10 @@ new Worker(
               });
 
               if (response.error) {
-                console.error("Response error:", response.error);
+                logger.error("Email send failed", {
+                  to,
+                  error: response.error,
+                });
                 throw response.error;
               }
 
@@ -93,9 +102,13 @@ new Worker(
                 group.pdfs.map((p) => p.facturaId),
               );
 
+              logger.info("Email sent successfully", { to });
               return { to, status: "sent" };
             } catch (err) {
-              console.error("worker: ", err);
+              logger.error("Email send error", {
+                to,
+                error: err instanceof Error ? err.message : String(err),
+              });
               throw err;
             }
           }),
@@ -105,15 +118,51 @@ new Worker(
       const success = results.filter((r) => r.status === "fulfilled").length;
       const failed = results.length - success;
 
-      console.log(
-        `[email-worker] Job ${job.id} complete — Sent: ${success}, Unsent: ${failed}`,
-      );
+      logger.info("Email job completed", {
+        jobId: job.id,
+        sent: success,
+        failed,
+      });
 
       return { sent: success, failed };
     } catch (err) {
-      console.error(`[email-worker] Fatal job error`, err);
+      logger.error("Fatal email job error", {
+        jobId: job.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
       throw err;
     }
   },
-  { connection: emailQueue.opts.connection },
+  {
+    connection: emailQueue.opts.connection,
+    concurrency: EMAIL_CONFIG.CONCURRENCY,
+  }
 );
+
+// Graceful shutdown handlers
+const shutdown = async (signal: string) => {
+  logger.info("Received shutdown signal, closing worker gracefully", {
+    signal,
+  });
+  await worker.close();
+  await redis.quit();
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+worker.on("failed", (job, err) => {
+  logger.error("Worker job failed", {
+    jobId: job?.id,
+    error: err instanceof Error ? err.message : String(err),
+  });
+});
+
+worker.on("error", (err) => {
+  logger.error("Worker error", {
+    error: err instanceof Error ? err.message : String(err),
+  });
+});
+
+logger.info("Email worker started successfully");

@@ -1,16 +1,16 @@
 import { MiddlewareHandler } from "hono";
 import { db as sharedDb } from "@/db";
 import { clients } from "@/db/schema";
-// import { getDrizzleForTenant } from "@/db/tenants/tenant-drizzle";
 import { eq } from "drizzle-orm";
 import { redis } from "@/lib/redis";
 import { tenantDbFactory } from "@/lib/tenantDbFactory";
+import { UnauthorizedError, ForbiddenError } from "@/utils/errors";
 
 export const withTenantDrizzle: MiddlewareHandler = async (c, next) => {
   const authHeader = c.req.header("Authorization");
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return c.text("Missing or invalid Authorization header", 401);
+    throw new UnauthorizedError("Missing or invalid Authorization header");
   }
 
   const apiKey = authHeader.replace("Bearer ", "").trim();
@@ -23,16 +23,17 @@ export const withTenantDrizzle: MiddlewareHandler = async (c, next) => {
   )[0];
 
   if (!client || !client.dbUrl) {
-    return c.text("Invalid API key", 403);
+    throw new ForbiddenError("Invalid API key");
   }
 
   const tenantDb = await tenantDbFactory.getClient(client.dbUrl);
 
   c.set("tenantDb", tenantDb);
+  c.set("client", client);
 
   const usageKey = `usage:tenant:${apiKey}`;
   await redis.incr(usageKey);
-  await redis.expire(usageKey, 86400); // 1 day TTL (optional)
+  await redis.expire(usageKey, 86400);
 
   await next();
 };
