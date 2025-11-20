@@ -7,7 +7,7 @@ export const TENANT_CONFIG = {
 } as const;
 
 export const EMAIL_CONFIG = {
-  CONCURRENCY: 2,
+  CONCURRENCY: 1,
   STAGGER_MS: 500,
   CHUNK_SIZE: 10,
   RETRY_ATTEMPTS: 3,

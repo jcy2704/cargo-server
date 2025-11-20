@@ -165,4 +165,31 @@ worker.on("error", (err) => {
   });
 });
 
+worker.on("stalled", (jobId) => {
+  logger.warn("Worker job stalled", { jobId });
+});
+
+worker.on("completed", (job) => {
+  logger.info("Worker job completed", {
+    jobId: job.id,
+    returnValue: job.returnvalue
+  });
+});
+
+// Handle Redis connection errors gracefully
+redis.on("error", (err) => {
+  logger.error("Worker Redis connection error", {
+    error: err.message,
+    workerActive: worker.isRunning()
+  });
+});
+
+redis.on("close", () => {
+  logger.warn("Worker Redis connection closed - will auto-retry");
+});
+
+redis.on("reconnecting", () => {
+  logger.info("Worker Redis reconnecting...");
+});
+
 logger.info("Email worker started successfully");

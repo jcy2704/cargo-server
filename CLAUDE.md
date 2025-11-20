@@ -68,7 +68,7 @@ Client Request → withTenantDrizzle Middleware → API Route
 
 **TenantDbFactory** (`src/core/factories/TenantDbFactory.ts`) implements sophisticated connection management:
 
-- **LRU Cache**: Keeps up to 10 active tenant connections in memory
+- **LRU Cache**: Keeps up to 50 active tenant connections in memory (configurable via `TENANT_CACHE_SIZE`)
 - **Redis Caching**: Caches decrypted DB URLs (30min TTL) to avoid repeated decryption
 - **Connection Reuse**: Fast-path checks for existing healthy connections
 - **Distributed Locking**: Uses Redis optimistic spin locks to prevent connection races
@@ -105,6 +105,9 @@ Email processing uses **BullMQ** for background job processing:
 ├── /emails       → Email operations
 ├── /facturas     → Invoice operations
 └── GET  /        → Test route (lists companies)
+
+/health           → Health check endpoint
+└── GET  /        → Returns status of Redis, Database, and Email Queue
 ```
 
 All `/api/*` routes automatically get `tenantDb` injected via `withTenantDrizzle` middleware.
@@ -113,11 +116,12 @@ All `/api/*` routes automatically get `tenantDb` injected via `withTenantDrizzle
 
 **Required Environment Variables**:
 - `DATABASE_URL`: Shared database connection string
-- `REDIS_URL`: Redis connection for caching & queues
-- `REDIS_PASSWORD`: Redis authentication
+- `REDIS_URL`: Redis connection for caching & queues (password included in URL)
 - `RESEND_API_KEY`: Email service API key
-- `AWS_*`: S3 credentials for file storage
-- `ENCRYPTION_KEY`: For encrypting tenant DB URLs
+- `BLACKBLAZE_KEY_ID`: Backblaze B2 access key
+- `BLACKBLAZE_API_KEY`: Backblaze B2 secret key
+- `B2_BUCKET_NAME`: Backblaze B2 bucket name
+- `CRYPTO_KEY`: 64-character hex string for encrypting tenant DB URLs
 - `PUBLIC_ALLOWED_ORIGINS`: CORS origins (comma-separated)
 
 **Docker Compose Services**:
