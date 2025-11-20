@@ -11,7 +11,7 @@ import resend from "@/lib/resend";
 import { getFriendlyUrl } from "@/lib/s3";
 import { emailQueue } from "@/lib/redis";
 import chunk from "lodash.chunk";
-import { logger } from "@/lib/logger";
+import { getTenantLogger } from "@/utils/tenant-logger";
 import { EMAIL_CONFIG } from "@/config/constants";
 import {
   NotFoundError,
@@ -53,6 +53,7 @@ emails.get("/status/:jobId", async (c) => {
 });
 
 emails.post("/bienvenida", async (c) => {
+  const log = getTenantLogger(c);
   const body = (await c.req.json()) as tenantSchema.NewUsuarios & {
     reenviar?: boolean;
   };
@@ -122,7 +123,7 @@ emails.post("/bienvenida", async (c) => {
       react: await WelcomeEmail({ ...compProps }),
     });
 
-    logger.info("Welcome email sent", { correo, casillero });
+    log.info("Welcome email sent", { correo, casillero });
 
     const adminTo = isProduction ? sucursal.correo : "sjcydev12@gmail.com";
 
@@ -141,12 +142,12 @@ emails.post("/bienvenida", async (c) => {
         react: await NewCustomerEmail({ ...adminProps }),
       });
 
-      logger.info("New customer notification sent", { adminTo, casillero });
+      log.info("New customer notification sent", { adminTo, casillero });
     }
 
     return c.json({ message: "Email sent successfully" }, 200);
   } catch (err) {
-    logger.error("Failed to send welcome email", {
+    log.error("Failed to send welcome email", {
       correo,
       casillero,
       error: err instanceof Error ? err.message : String(err),
@@ -156,6 +157,7 @@ emails.post("/bienvenida", async (c) => {
 });
 
 emails.post("/send-bulk-facturas", async (c) => {
+  const log = getTenantLogger(c);
   const { facturaIds } = (await c.req.json()) as { facturaIds: number[] };
 
   if (!Array.isArray(facturaIds) || facturaIds.length === 0) {
@@ -176,16 +178,16 @@ emails.post("/send-bulk-facturas", async (c) => {
     jobs.push(job.id);
   }
 
-  logger.info("Bulk factura jobs queued", {
+  log.info("Bulk factura jobs queued", {
     totalFacturas: facturaIds.length,
     jobCount: jobs.length,
-    clientDomain: client.domain,
   });
 
   return c.json({ message: "Factura jobs queued", jobIds: jobs }, 202);
 });
 
 emails.post("/send-factura", async (c) => {
+  const log = getTenantLogger(c);
   const { facturaId } = (await c.req.json()) as {
     facturaId: number;
   };
@@ -203,10 +205,9 @@ emails.post("/send-factura", async (c) => {
     dbUrl: client.dbUrl,
   });
 
-  logger.info("Single factura email queued", {
+  log.info("Single factura email queued", {
     facturaId,
     jobId: job.id,
-    clientDomain: client.domain,
   });
 
   return c.json(

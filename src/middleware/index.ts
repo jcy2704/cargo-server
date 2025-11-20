@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { redis } from "@/lib/redis";
 import { tenantDbFactory } from "@/lib/tenantDbFactory";
 import { UnauthorizedError, ForbiddenError } from "@/utils/errors";
+import { logger } from "@/lib/logger";
 
 export const withTenantDrizzle: MiddlewareHandler = async (c, next) => {
   const authHeader = c.req.header("Authorization");
@@ -28,8 +29,16 @@ export const withTenantDrizzle: MiddlewareHandler = async (c, next) => {
 
   const tenantDb = await tenantDbFactory.getClient(client.dbUrl);
 
+  // Set tenant context for use in routes
   c.set("tenantDb", tenantDb);
   c.set("client", client);
+  c.set("tenantDomain", client.domain);
+
+  logger.info("Tenant request", {
+    tenant: client.domain,
+    method: c.req.method,
+    path: c.req.path,
+  });
 
   const usageKey = `usage:tenant:${apiKey}`;
   await redis.incr(usageKey);

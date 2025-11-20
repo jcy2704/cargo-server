@@ -25,6 +25,8 @@ const worker = new Worker(
       facturaCount: facturaIds.length,
     });
 
+    let tenantName = "unknown";
+
     try {
       const tenantDb = await tenantDbFactory.getClient(dbUrl);
       const facturaRepo = new FacturaRepository(tenantDb);
@@ -45,6 +47,14 @@ const worker = new Worker(
           })),
         facturaRepo.getWithRelations(facturaIds),
       ]);
+
+      tenantName = company;
+
+      logger.info("Processing emails for tenant", {
+        jobId: job.id,
+        tenant: tenantName,
+        facturaCount: facturaIds.length,
+      });
 
       const pdfs = await generatePDFBatch(
         facturas as FacturaWithRelations[],
@@ -92,6 +102,7 @@ const worker = new Worker(
 
               if (response.error) {
                 logger.error("Email send failed", {
+                  tenant: tenantName,
                   to,
                   error: response.error,
                 });
@@ -102,10 +113,14 @@ const worker = new Worker(
                 group.pdfs.map((p) => p.facturaId),
               );
 
-              logger.info("Email sent successfully", { to });
+              logger.info("Email sent successfully", {
+                tenant: tenantName,
+                to,
+              });
               return { to, status: "sent" };
             } catch (err) {
               logger.error("Email send error", {
+                tenant: tenantName,
                 to,
                 error: err instanceof Error ? err.message : String(err),
               });
@@ -120,14 +135,16 @@ const worker = new Worker(
 
       logger.info("Email job completed", {
         jobId: job.id,
+        tenant: tenantName,
         sent: success,
         failed,
       });
 
-      return { sent: success, failed };
+      return { tenant: tenantName, sent: success, failed };
     } catch (err) {
       logger.error("Fatal email job error", {
         jobId: job.id,
+        tenant: tenantName,
         error: err instanceof Error ? err.message : String(err),
       });
       throw err;
@@ -170,8 +187,10 @@ worker.on("stalled", (jobId) => {
 });
 
 worker.on("completed", (job) => {
+  const tenant = job.returnvalue?.tenant || "unknown";
   logger.info("Worker job completed", {
     jobId: job.id,
+    tenant,
     returnValue: job.returnvalue
   });
 });
