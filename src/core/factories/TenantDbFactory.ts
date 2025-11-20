@@ -85,18 +85,51 @@ export class TenantDbFactory {
     if (!acquired) throw new Error("Could not acquire DB connection lock");
 
     try {
-      const pool = mysql.createPool({
-        uri: decryptedUrl,
-        connectionLimit: TENANT_CONFIG.CONNECTION_POOL_SIZE,
-        waitForConnections: true,
-        queueLimit: 10,
-        enableKeepAlive: true,
-        keepAliveInitialDelay: 0,
-      });
+      // Retry pool creation with exponential backoff
+      let pool: mysql.Pool | null = null;
+      let lastError: Error | null = null;
 
-      logger.debug("Creating new tenant database connection", {
-        encryptedUrl: encryptedUrl.substring(0, 20) + "...",
-      });
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          pool = mysql.createPool({
+            uri: decryptedUrl,
+            connectionLimit: TENANT_CONFIG.CONNECTION_POOL_SIZE,
+            waitForConnections: true,
+            queueLimit: 10,
+            enableKeepAlive: true,
+            keepAliveInitialDelay: 0,
+          });
+
+          // Verify the pool can actually connect
+          await pool.query("SELECT 1");
+
+          logger.debug("Created new tenant database connection", {
+            encryptedUrl: encryptedUrl.substring(0, 20) + "...",
+            attempt,
+          });
+          break;
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error(String(err));
+          logger.warn("Failed to create tenant pool, retrying", {
+            attempt,
+            maxAttempts: 3,
+            error: lastError.message,
+          });
+
+          if (pool) {
+            await pool.end().catch(() => {});
+            pool = null;
+          }
+
+          if (attempt < 3) {
+            await Bun.sleep(1000 * attempt); // 1s, 2s backoff
+          }
+        }
+      }
+
+      if (!pool) {
+        throw lastError || new Error("Failed to create tenant pool after retries");
+      }
 
       const client = drizzle(pool);
       const connection: TenantConnection = {
