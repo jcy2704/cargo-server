@@ -15,6 +15,37 @@ import { EMAIL_CONFIG } from "@/config/constants";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+// Parse Redis URL for worker connection
+const redisUrl = new URL(process.env.REDIS_URL!);
+
+// Create dedicated connection config for worker with retry logic
+const workerConnectionConfig = {
+  host: redisUrl.hostname,
+  port: parseInt(redisUrl.port || "6379"),
+  ...(redisUrl.password && { password: decodeURIComponent(redisUrl.password) }),
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+  ...(isProduction && { tls: {} }),
+  retryStrategy(times: number) {
+    const delay = Math.min(times * 1000, 30000);
+    logger.warn(`Worker Redis retry attempt ${times}, waiting ${delay}ms`);
+    return delay;
+  },
+  reconnectOnError(err: Error) {
+    const targetErrors = [
+      "READONLY",
+      "ETIMEDOUT",
+      "ECONNRESET",
+      "ECONNREFUSED",
+    ];
+    if (targetErrors.some((target) => err.message.includes(target))) {
+      logger.warn("Worker Redis reconnecting on error", { error: err.message });
+      return true;
+    }
+    return false;
+  },
+};
+
 const worker = new Worker(
   "email-jobs",
   async (job) => {
@@ -59,12 +90,12 @@ const worker = new Worker(
       const pdfs = await generatePDFBatch(
         facturas as FacturaWithRelations[],
         company,
-        logo,
+        logo
       );
 
       const grouped = groupPdfsByClient(
         facturas as FacturaWithRelations[],
-        pdfs,
+        pdfs
       );
 
       const limit = pLimit(EMAIL_CONFIG.CONCURRENCY);
@@ -110,7 +141,7 @@ const worker = new Worker(
               }
 
               await facturaRepo.markAsEnviado(
-                group.pdfs.map((p) => p.facturaId),
+                group.pdfs.map((p) => p.facturaId)
               );
 
               logger.info("Email sent successfully", {
@@ -126,8 +157,8 @@ const worker = new Worker(
               });
               throw err;
             }
-          }),
-        ),
+          })
+        )
       );
 
       const success = results.filter((r) => r.status === "fulfilled").length;
@@ -151,8 +182,10 @@ const worker = new Worker(
     }
   },
   {
-    connection: emailQueue.opts.connection,
+    connection: workerConnectionConfig,
     concurrency: EMAIL_CONFIG.CONCURRENCY,
+    autorun: true,
+    // BullMQ settings for connection resilience
   }
 );
 
@@ -191,24 +224,8 @@ worker.on("completed", (job) => {
   logger.info("Worker job completed", {
     jobId: job.id,
     tenant,
-    returnValue: job.returnvalue
+    returnValue: job.returnvalue,
   });
-});
-
-// Handle Redis connection errors gracefully
-redis.on("error", (err) => {
-  logger.error("Worker Redis connection error", {
-    error: err.message,
-    workerActive: worker.isRunning()
-  });
-});
-
-redis.on("close", () => {
-  logger.warn("Worker Redis connection closed - will auto-retry");
-});
-
-redis.on("reconnecting", () => {
-  logger.info("Worker Redis reconnecting...");
 });
 
 logger.info("Email worker started successfully");
