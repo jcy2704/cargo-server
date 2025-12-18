@@ -175,13 +175,14 @@ export const NewCustomerEmail: React.FC<Readonly<NewCustomerEmailProps>> = ({
                 {dir.name}
               </Heading>
               <Text style={{ ...styles.paragraph, marginBottom: 0 }}>
-                Nombre: {sucursal.codificacion} {nombre} {apellido}
+                Nombre: {sucursal.codificacion} {nombre} {apellido} {dir.suffix ? dir.suffix : ""}
                 <br />
                 Dirección: {dir.address1} {sucursal.codificacion}
                 <br />
                 Línea 2: {dir.address2 ? `${dir.address2} ` : ""}
                 {sucursal.codificacion}
                 {casillero}
+                {dir.suffix ? dir.suffix : ""}
                 <br />
                 Ciudad: {dir.city}
                 <br />

@@ -108,13 +108,13 @@ export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
                   <Text style={addressTitle}>📍 {dir.name} </Text>
                   <Text style={addressText}>
                     <strong>Nombre:</strong> {sucursal.codificacion} {nombre}{" "}
-                    {apellido}
+                    {apellido} {dir.suffix ? dir.suffix : ""}
                     <br />
                     <strong>Dirección:</strong> {dir.address1}{" "}
                     {sucursal.codificacion}
                     <br />
                     <strong>Línea 2:</strong> {dir.address2 ? `${dir.address2} ` : ""}{sucursal.codificacion}
-                    {casillero}
+                    {casillero} {dir.suffix ? dir.suffix : ""}
                     <br />
                     <strong>Ciudad:</strong> {dir.city}
                     <br />

@@ -16,13 +16,14 @@ import type { InferResultType } from "./extras";
 
 export const addresses = mysqlTable("addresses", {
   addressId: int("addressId").autoincrement().primaryKey(),
-  name: varchar("name", {length: 100}).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
   address1: varchar("address1", { length: 500 }).notNull(),
   address2: varchar("address2", { length: 500 }),
   zipcode: varchar("zipcode", { length: 15 }).notNull(),
-  state: varchar("state", {length: 100}).notNull(),
+  state: varchar("state", { length: 100 }).notNull(),
   city: varchar("city", { length: 100 }).notNull(),
   country: varchar("country", { length: 60 }).notNull(),
+  suffix: varchar("suffix", { length: 50 }),
   tel: varchar("tel", { length: 100 }).notNull(),
 });
 
@@ -119,7 +120,7 @@ export const session = mysqlTable("session", {
     length: 255,
   })
     .notNull()
-    .references(() => users.id, { onDelete: "cascade"}),
+    .references(() => users.id, { onDelete: "cascade" }),
   expiresAt: datetime("expires_at").notNull(),
 });
 
@@ -253,7 +254,9 @@ export const trackings = mysqlTable(
   "trackings",
   {
     trackingId: int("trackingId").autoincrement().primaryKey(),
-    facturaId: int("facturaId").references(() => facturas.facturaId, { onDelete: "cascade"}),
+    facturaId: int("facturaId").references(() => facturas.facturaId, {
+      onDelete: "cascade",
+    }),
     numeroTracking: varchar("numeroTracking", { length: 255 }),
     peso: int("peso"),
     base: float("base"),
