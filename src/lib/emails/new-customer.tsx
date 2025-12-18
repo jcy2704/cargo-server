@@ -24,6 +24,7 @@ export interface NewCustomerEmailProps {
   logo: string;
   cedula: string;
   telefono: string;
+  direcciones: tenantSchema.Addresses[];
 }
 
 export const NewCustomerEmail: React.FC<Readonly<NewCustomerEmailProps>> = ({
@@ -35,6 +36,7 @@ export const NewCustomerEmail: React.FC<Readonly<NewCustomerEmailProps>> = ({
   cedula,
   telefono,
   correo,
+  direcciones,
 }) => {
   const preview = "Nuevo Casillero Registrado";
 
@@ -126,8 +128,8 @@ export const NewCustomerEmail: React.FC<Readonly<NewCustomerEmailProps>> = ({
           <Img src={logo} alt="Logo" style={styles.logo} />
           <Heading style={styles.heading}>Nuevo Casillero Registrado</Heading>
           <Text style={styles.paragraph}>
-            Un nuevo cliente se ha registrado en la sucursal {sucursal.sucursal}. Debajo
-            tendrás la información del casillero del cliente.
+            Un nuevo cliente se ha registrado en la sucursal {sucursal.sucursal}
+            . Debajo tendrás la información del casillero del cliente.
           </Text>
 
           <Hr style={styles.hr} />
@@ -157,36 +159,42 @@ export const NewCustomerEmail: React.FC<Readonly<NewCustomerEmailProps>> = ({
 
           <Hr style={styles.hr} />
 
-          <Section
-            style={{
-              backgroundColor: "#f3f4f6",
-              padding: "24px",
-              borderRadius: "8px",
-              marginBottom: "24px",
-            }}
-          >
-            <Heading style={{ ...styles.subheading, marginTop: 0 }}>
-              Información del Casillero (Aéreo)
-            </Heading>
-            <Text style={{ ...styles.paragraph, marginBottom: 0 }}>
-              Nombre: {sucursal.codificacion} {nombre} {apellido}
-              <br />
-              Dirección: {direccion.direccion1} {sucursal.codificacion}
-              <br />
-              Línea 2: {sucursal.codificacion}
-              {casillero}
-              <br />
-              Ciudad: {direccion.ciudad}
-              <br />
-              Estado: {direccion.estado}
-              <br />
-              Código Postal: {direccion.zip}
-              <br />
-              País: {direccion.pais}
-              <br />
-              Tel: {direccion.tel}
-            </Text>
-          </Section>
+          <Heading style={styles.heading}>Direcciones de Envío</Heading>
+
+          {direcciones.map((dir) => (
+            <Section
+              style={{
+                backgroundColor: "#f3f4f6",
+                padding: "24px",
+                borderRadius: "8px",
+                marginBottom: "24px",
+              }}
+              key={dir.addressId}
+            >
+              <Heading style={{ ...styles.subheading, marginTop: 0 }}>
+                {dir.name}
+              </Heading>
+              <Text style={{ ...styles.paragraph, marginBottom: 0 }}>
+                Nombre: {sucursal.codificacion} {nombre} {apellido}
+                <br />
+                Dirección: {dir.address1} {sucursal.codificacion}
+                <br />
+                Línea 2: {dir.address2 ? `${dir.address2} ` : ""}
+                {sucursal.codificacion}
+                {casillero}
+                <br />
+                Ciudad: {dir.city}
+                <br />
+                Estado: {dir.state}
+                <br />
+                Código Postal: {dir.zipcode}
+                <br />
+                País: {dir.country}
+                <br />
+                Tel: {dir.tel}
+              </Text>
+            </Section>
+          ))}
 
           <Section>
             <Text style={{ ...styles.footer, textAlign: "center" }}>

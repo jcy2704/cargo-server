@@ -46,11 +46,13 @@ The application uses a **two-database architecture**:
 2. **Tenant Databases** (`src/db/tenants/tenants-schema.ts`): Each tenant has their own isolated database
    - `companies`: Company information and branding
    - `sucursales`: Branch/location management
+   - `addresses`: Shipping addresses for branches (many-to-many via `sucursalToAddress`)
    - `usuarios`: End customers with locker numbers (casillero)
    - `facturas`: Invoices for package deliveries
    - `trackings`: Individual package tracking numbers
    - `users`: Staff users (admin, secretaria, empleado)
    - `reportes`: Financial reports
+   - `session`: User session management
 
 ### Request Flow
 
@@ -88,8 +90,8 @@ Email processing uses **BullMQ** for background job processing:
 - **PDF Generation**: Facturas are converted to PDFs using `@react-pdf/renderer` before attachment
 
 **Email Routes**:
-- POST `/api/emails/bienvenida`: Welcome email for new customers
-- POST `/api/emails/send-factura`: Single invoice email (queued in microtask)
+- POST `/api/emails/bienvenida`: Welcome email for new customers (sent synchronously)
+- POST `/api/emails/send-factura`: Single invoice email (queued via BullMQ)
 - POST `/api/emails/send-bulk-facturas`: Bulk invoice emails (BullMQ jobs)
 - GET `/api/emails/status/:jobId`: Check job status
 
@@ -179,13 +181,33 @@ const facturas = await facturaRepo.getWithRelations([1, 2, 3]);
 
 ### Path Aliases
 
-TypeScript is configured with `@/*` alias pointing to `src/*`:
+TypeScript is configured with `@/*` alias pointing to `src/*` (defined in `tsconfig.json`):
 
 ```typescript
 import { db } from "@/db";
 import { tenantDbFactory } from "@/lib/tenantDbFactory";
 import * as tenantSchema from "@/db/tenants/tenants-schema";
 ```
+
+### Error Handling
+
+The codebase uses custom error classes (`src/utils/errors.ts`) for consistent error handling:
+
+```typescript
+import { NotFoundError, ValidationError, InternalServerError, UnauthorizedError, ForbiddenError } from "@/utils/errors";
+
+// Usage in routes:
+if (!facturaId) {
+  throw new ValidationError("facturaId is required");
+}
+
+const factura = await getFactura(facturaId);
+if (!factura) {
+  throw new NotFoundError("Factura");
+}
+```
+
+Errors are handled globally by the `errorHandler` middleware (`src/middleware/error-handler.ts`), which returns appropriate HTTP status codes and JSON responses.
 
 ## Testing & Debugging
 

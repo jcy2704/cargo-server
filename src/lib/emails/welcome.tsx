@@ -23,6 +23,7 @@ export interface WelcomeEmailProps {
   sucursal: tenantSchema.Sucursales;
   nombre_de_compania: string;
   logo: string;
+  direcciones: tenantSchema.Addresses[];
 }
 
 export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
@@ -32,17 +33,18 @@ export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
   sucursal,
   nombre_de_compania,
   logo,
+  direcciones,
 }: WelcomeEmailProps) => {
   const preview = "Correo de Bienvenida e Información del Casillero";
 
-  const direccion = {
-    direccion1: "7854 NW 46TH ST UNIT 2",
-    estado: "FLORIDA",
-    ciudad: "MIAMI",
-    zip: "33166-5461",
-    pais: "UNITED STATES",
-    tel: "+1 305-592-4534",
-  };
+  // const direccion1 = {
+  //   direccion1: "7854 NW 46TH ST UNIT 2",
+  //   estado: "FLORIDA",
+  //   ciudad: "MIAMI",
+  //   zip: "33166-5461",
+  //   pais: "UNITED STATES",
+  //   tel: "+1 305-592-4534",
+  // };
 
   return (
     <Html>
@@ -79,10 +81,8 @@ export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
             </Text>
 
             {/* Casillero Information Card */}
-            <Section style={packageSection}>
-              <Heading style={sectionTitle}>
-                📦 Información del Casillero (Aéreo)
-              </Heading>
+            <Section>
+              <Heading style={sectionTitle}>Información del Casillero</Heading>
 
               {/* Casillero Highlight */}
               <Section style={cardsContainer}>
@@ -98,31 +98,36 @@ export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
                   </Column>
                 </Row>
               </Section>
+            </Section>
 
+            <Section style={packageSection}>
+              <Heading style={sectionTitle}>📦 Direcciones de Envío</Heading>
               {/* Address Information */}
-              <Section style={addressCard}>
-                <Text style={addressTitle}>📍 Dirección de Envío</Text>
-                <Text style={addressText}>
-                  <strong>Nombre:</strong> {sucursal.codificacion} {nombre}{" "}
-                  {apellido}
-                  <br />
-                  <strong>Dirección:</strong> {direccion.direccion1}{" "}
-                  {sucursal.codificacion}
-                  <br />
-                  <strong>Línea 2:</strong> {sucursal.codificacion}
-                  {casillero}
-                  <br />
-                  <strong>Ciudad:</strong> {direccion.ciudad}
-                  <br />
-                  <strong>Estado:</strong> {direccion.estado}
-                  <br />
-                  <strong>Código Postal:</strong> {direccion.zip}
-                  <br />
-                  <strong>País:</strong> {direccion.pais}
-                  <br />
-                  <strong>Tel:</strong> {direccion.tel}
-                </Text>
-              </Section>
+              {direcciones.map((dir) => (
+                <Section style={addressCard} key={dir.addressId}>
+                  <Text style={addressTitle}>📍 {dir.name} </Text>
+                  <Text style={addressText}>
+                    <strong>Nombre:</strong> {sucursal.codificacion} {nombre}{" "}
+                    {apellido}
+                    <br />
+                    <strong>Dirección:</strong> {dir.address1}{" "}
+                    {sucursal.codificacion}
+                    <br />
+                    <strong>Línea 2:</strong> {dir.address2 ? `${dir.address2} ` : ""}{sucursal.codificacion}
+                    {casillero}
+                    <br />
+                    <strong>Ciudad:</strong> {dir.city}
+                    <br />
+                    <strong>Estado:</strong> {dir.state}
+                    <br />
+                    <strong>Código Postal:</strong> {dir.zipcode}
+                    <br />
+                    <strong>País:</strong> {dir.country}
+                    <br />
+                    <strong>Tel:</strong> {dir.tel}
+                  </Text>
+                </Section>
+              ))}
             </Section>
 
             {/* Important Instructions */}
@@ -143,9 +148,9 @@ export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
             {/* Warning */}
             <Section style={warningCard}>
               <Text style={warningText}>
-                ⚠️ <strong>Atención:</strong> Esta dirección es solo para
-                compras aéreas. Para dirección marítima, contáctanos
-                directamente.
+                ⚠️ <strong>Atención:</strong> Si tienes dudas sobre cómo
+                utilizar correctamente alguna dirección, puedes ponerte en
+                contacto con nosotros directamente.
               </Text>
             </Section>
 
@@ -296,7 +301,7 @@ const paragraph = {
 };
 
 const packageSection = {
-  margin: "0 0 32px 0",
+  margin: "0 0 16px 0",
 };
 
 const sectionTitle = {
@@ -339,6 +344,7 @@ const addressCard = {
   borderRadius: "8px",
   padding: "20px",
   border: "1px solid #e5e7eb",
+  marginBottom: "16px",
 };
 
 const addressTitle = {
