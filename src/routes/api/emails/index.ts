@@ -82,6 +82,7 @@ emails.post("/bienvenida", async (c) => {
       .then((res) => res[0]),
     tenantDb
       .select({
+        sucursalId: tenantSchema.sucursales.sucursalId,
         sucursal: tenantSchema.sucursales.sucursal,
         codificacion: tenantSchema.sucursales.codificacion,
         correo: tenantSchema.sucursales.correo,
@@ -92,6 +93,29 @@ emails.post("/bienvenida", async (c) => {
       .limit(1)
       .then((res) => res[0]),
   ]);
+
+  const direcciones = await tenantDb
+    .select({
+      addressId: tenantSchema.addresses.addressId,
+      name: tenantSchema.addresses.name,
+      address1: tenantSchema.addresses.address1,
+      address2: tenantSchema.addresses.address2,
+      zipcode: tenantSchema.addresses.zipcode,
+      state: tenantSchema.addresses.state,
+      city: tenantSchema.addresses.city,
+      country: tenantSchema.addresses.country,
+      tel: tenantSchema.addresses.tel,
+      suffix: tenantSchema.addresses.suffix
+    })
+    .from(tenantSchema.addresses)
+    .innerJoin(
+      tenantSchema.sucursalToAddress,
+      eq(
+        tenantSchema.addresses.addressId,
+        tenantSchema.sucursalToAddress.addressId,
+      ),
+    )
+    .where(eq(tenantSchema.sucursalToAddress.sucursalId, sucursal.sucursalId));
 
   if (!company) {
     throw new NotFoundError("Company");
@@ -109,6 +133,7 @@ emails.post("/bienvenida", async (c) => {
     sucursal: sucursal as tenantSchema.Sucursales,
     nombre_de_compania: company.company,
     logo,
+    direcciones: direcciones as tenantSchema.Addresses[],
   } satisfies WelcomeEmailProps;
 
   const from = isProduction
@@ -215,7 +240,7 @@ emails.post("/send-factura", async (c) => {
       message: "Email queued for sending",
       jobId: job.id,
     },
-    202
+    202,
   );
 });
 
