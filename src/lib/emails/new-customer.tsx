@@ -9,8 +9,6 @@ import {
   Text,
   Hr,
   Preview,
-  Column,
-  Row,
 } from "@react-email/components";
 import * as React from "react";
 import * as tenantSchema from "@/db/tenants/tenants-schema";
@@ -40,14 +38,15 @@ export const NewCustomerEmail: React.FC<Readonly<NewCustomerEmailProps>> = ({
 }) => {
   const preview = "Nuevo Casillero Registrado";
 
-  const direccion = {
-    direccion1: "7854 NW 46TH ST UNIT 2",
-    estado: "FLORIDA",
-    ciudad: "MIAMI",
-    zip: "33166-5461",
-    pais: "UNITED STATES",
-    tel: "+1 305-592-4534",
-  };
+  // const direccion = {
+  //   direccion1: "7854 NW 46TH ST UNIT 2",
+  //   estado: "FLORIDA",
+  //   ciudad: "MIAMI",
+  //   zip: "33166-5461",
+  //   pais: "UNITED STATES",
+  //   tel: "+1 305-592-4534",
+  // };
+  //
 
   const fontFamily =
     "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif";

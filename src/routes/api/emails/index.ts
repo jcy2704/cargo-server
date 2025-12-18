@@ -105,6 +105,7 @@ emails.post("/bienvenida", async (c) => {
       city: tenantSchema.addresses.city,
       country: tenantSchema.addresses.country,
       tel: tenantSchema.addresses.tel,
+      suffix: tenantSchema.addresses.suffix
     })
     .from(tenantSchema.addresses)
     .innerJoin(
