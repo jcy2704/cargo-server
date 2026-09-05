@@ -8,6 +8,13 @@
       "when": 1748605820649,
       "tag": "0000_add_clientes",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1788595575041,
+      "tag": "0001_add_whatsapp_waba_credentials",
+      "breakpoints": true
     }
   ]
 }

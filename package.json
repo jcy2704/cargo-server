@@ -7,6 +7,8 @@
     "db:generate": "drizzle-kit generate --name",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
     "email-dev": "email dev",
     "email:worker": "bun run src/workers/emailWorker.ts"
   },

@@ -1,0 +1,5 @@
+[test]
+# Ensure a deterministic CRYPTO_KEY is present before any module that reads it
+# at import time (utils/crypto.ts) is loaded, so tests are hermetic and don't
+# depend on a developer's local .env.
+preload = ["./src/test-setup.ts"]
