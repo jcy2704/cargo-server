@@ -16,13 +16,17 @@ export type Variables = {
 
 export const api = new Hono<{ Variables: Variables }>();
 
-api.use("*", withTenantDrizzle);
+// Tenant-DB-backed routes require a live tenant connection.
+api.use("/emails/*", withTenantDrizzle);
+api.use("/facturas/*", withTenantDrizzle);
 
 api.route("/emails", emails);
 api.route("/facturas", facturas);
+// WhatsApp settings live in the shared DB and authenticate with `withClient`
+// inside the router, so they don't require a tenant-DB connection.
 api.route("/whatsapp", whatsapp);
 
-api.get("/", async (c) => {
+api.get("/", withTenantDrizzle, async (c) => {
   const db = c.get("tenantDb");
   const result = await db.select().from(tenantSchema.companies);
   return c.json(result);

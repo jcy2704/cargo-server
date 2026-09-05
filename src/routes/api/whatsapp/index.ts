@@ -6,12 +6,16 @@ import { encrypt } from "@/utils/crypto";
 import { maskWhatsappSettings } from "@/core/services/whatsappCredentials";
 import { ValidationError } from "@/utils/errors";
 import { getTenantLogger } from "@/utils/tenant-logger";
+import { withClient } from "@/middleware";
 
 type Variables = {
   client: Client;
 };
 
 const whatsapp = new Hono<{ Variables: Variables }>();
+
+// Shared-DB credentials — authenticate the Client without a tenant connection.
+whatsapp.use("*", withClient);
 
 /**
  * GET /api/whatsapp — the calling Client's WhatsApp settings.
